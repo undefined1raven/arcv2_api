@@ -6,12 +6,9 @@ const mysql = require('mysql2')
 const connection = mysql.createConnection(process.env.DB_KEY)
 
 function handler(req, res) {
-    connection.execute('CREATE TABLE users(username varchar(255));');    
-    if(process.env.DB_KEY != undefined){
-        res.json({DAX: 'got it'})
-    }else{
-        res.json({DAX: 'not really'})
-    }
+    connection.query('SELECT * FROM unn;', (err, res, fields) => {        
+        res.json({DAX: 'got it', RX: res})
+    });    
 }
 
 module.exports = cors(handler);
