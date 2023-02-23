@@ -35,7 +35,7 @@ const db = admin.database();
 
 
 function handler(req, res) {
-    res.json({ree: 'idk'})
+    res.json({200: '200'})
 }
 
 module.exports = cors(handler);
