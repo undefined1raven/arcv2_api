@@ -7,7 +7,7 @@ const connection = mysql.createConnection(process.env.DB_KEY)
 
 function handler(req, res) {
     try{
-        connection.query('INSERT INTO unn SET ?', {uixx: Math.ceil(Math.random())}, (err, resx, fields) => {        
+        connection.query('SELECT * FROM unn', (err, resx, fields) => {        
             res.json({DAX: 'got it', RX: resx})
         });    
     }catch(e){
