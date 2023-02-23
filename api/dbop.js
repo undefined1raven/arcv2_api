@@ -6,7 +6,7 @@ const mysql = require('mysql2')
 const connection = mysql.createConnection(process.env.DB_KEY)
 
 function handler(req, res) {
-    connection.query('CREATE TABLE users(username varchar(255));');    
+    connection.execute('CREATE TABLE users(username varchar(255));');    
     if(process.env.DB_KEY != undefined){
         res.json({DAX: 'got it'})
     }else{
