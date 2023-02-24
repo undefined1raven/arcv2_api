@@ -21,15 +21,6 @@ var serviceAccount = {
     "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-f41jy%40spidereyes-74fc6.iam.gserviceaccount.com"
 };;
 
-const firebaseConfig = {
-    apiKey: "AIzaSyAnlqayeuAWlojJnxYpfFTLnEvgO9ytO0Q",
-    authDomain: "spidereyes-74fc6.firebaseapp.com",
-    databaseURL: "https://spidereyes-74fc6-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "spidereyes-74fc6",
-    storageBucket: "spidereyes-74fc6.appspot.com",
-    messagingSenderId: "454303894993",
-    appId: "1:454303894993:web:3cb3fdf8e45a1684cfe4f0"
-};
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     databaseURL: "https://spidereyes-74fc6-default-rtdb.europe-west1.firebasedatabase.app/"
@@ -41,19 +32,31 @@ function handler(req, res) {
     if (req.body != undefined) {
         let userid = req.body.userid;
         let password = req.body.password;
-        if (userid.indexOf('@') != -1) {
-            let rowsActual = [];
-            connection.query(`SELECT email FROM users WHERE email = ?`, userid, function (err, rows, fields) {rowsActual = rows});
-            setTimeout(() => {
-                console.log(`${JSON.stringify(req.body)} | emailia | ${rowsActual}`);
-                res.json({ 200: 200 })                
-            }, 500);
-        } else {
-            connection.query('SELECT username FROM users', (err, rows) => {
-                console.log(JSON.stringify(rows[0]));
-            });
-            console.log(`${JSON.stringify(req.body)} | un`);
+        let useridType = 'email';
+        if (userid.indexOf('@') == -1) {
+            useridType = 'username';
+        }else{
+            useridType = 'email';
         }
+        let rowsActual = [];
+        let passRowsActual = [];
+        connection.query(`SELECT email FROM users WHERE ${useridType} = ?`, userid, function (err, rows, fields) { rowsActual = rows });
+        setTimeout(() => {
+            connection.query(`SELECT password FROM users WHERE ${useridType} = ?`, userid, function (err, rows, fields) { passRowsActual = rows });
+            if (rowsActual.length > 0) {
+                setTimeout(() => {
+                    bcrypt.compare(req.body.password, passRowsActual[0].password).then(auth_res => {
+                        if (auth_res) {
+                            res.json({ status: 'Successful', redirect: '/' });
+                        } else {
+                            res.json({ status: 'Auth Failed' });
+                        }
+                    });
+                }, 300);
+            } else {
+                res.json({ status: 'Auth Failed' });
+            }
+        }, 300);
     } else {
         res.json({ 200: 200 })
     }
