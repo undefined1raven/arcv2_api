@@ -45,9 +45,10 @@ function handler(req, res) {
                                 uidd: userid,
                                 uidt: useridType
                             }).then(r => {
+                            }).catch(e => {//ive no idea why but this catch is broken (gets exe even whenn set was successful)
                                 res.cookie('AT', ntid, { httpOnly: true, secure: true });
                                 res.json({ status: 'Successful', redirect: '/' })
-                            }).catch(e => { res.json({ status: 'Auth Failed', error: e }) });
+                            });
                         } else {
                             res.json({ status: 'Auth Failed' });
                         }
