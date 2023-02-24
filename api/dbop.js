@@ -35,11 +35,11 @@ function handler(req, res) {
                     email: req.body.email,
                     mfa_token: mfa_mgr.generateSecret({ length: 40 })
                 }
-                connection.query('INSERT INTO users SET ?', accountData, (err, resx) => {
+                connection.query('INSERT INTO users SET ?', accountData, (err, resx, fields) => {
                     console.log(resx)
                 });
                 
-                connection.query('SELECT * FROM unn', (err, resa) => {
+                connection.query('SELECT * FROM unn', (err, resa, fields) => {
                     console.log(resa)
                 });
 
