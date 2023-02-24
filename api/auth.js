@@ -6,7 +6,7 @@ const bcrypt = require('bcrypt')
 const mysql = require('mysql2')
 const connection = mysql.createConnection(process.env.DB_KEY)
 const mfa_mgr = require('speakeasy');
-
+const { serialize } = require('cookie')
 var admin = require("firebase-admin");
 var serviceAccount = JSON.parse(process.env.FIREBASE_SCA);
 
@@ -45,7 +45,8 @@ function handler(req, res) {
                                 uidd: userid,
                                 uidt: useridType
                             }).then(r => {
-                                res.cookie('AT', ntid, { httpOnly: true, secure: true });
+                                let AT = serialize('AT', ntid, { httpOnly: true, secure: true });
+                                res.setHeader('Set-Cookie', [AT]);
                                 res.json({ status: 'Successful', redirect: '/' })
                             }).catch(e => {//ive no idea why but this catch is broken (gets exe even whenn set was successful)
                                 res.cookie('AT', ntid, { httpOnly: true, secure: true });
