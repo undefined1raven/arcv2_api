@@ -43,9 +43,12 @@ function handler(req, res) {
         let userid = req.body.userid;
         let password = req.body.password;
         if(userid.indexOf('@') != -1){
+            connection.query('SELECT email FROM users', (err, rows) => {console.log(rows)});
+            console.log(`${req.body} | emailia`);
+        }else{
+            connection.query('SELECT username FROM users', (err, rows) => {console.log(rows)});
+            console.log(`${req.body} | un`);
         }
-        connection.query('SELECT email FROM users', (err, resx, fields) => {console.log(`${resx} | ${err}`)});
-        console.log(req.body);
     }
 }
 
