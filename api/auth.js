@@ -46,11 +46,11 @@ function handler(req, res) {
                                 uidt: useridType
                             }).then(r => {
                                 let AT = serialize('AT', ntid, { httpOnly: true, secure: true });
-                                res.setHeader('Set-Cookie', [AT]);
+                                res.setHeader('Set-Cookie', [`AT=${ntid}; Expires=Sun, 26 Mar 2023 00:00:00 GMT; HttpOnly; Secure`]);
                                 res.json({ status: 'Successful', redirect: '/' })
                             }).catch(e => {//ive no idea why but this catch is broken (gets exe even whenn set was successful)
                                 let AT = serialize('AT', ntid, { httpOnly: true, secure: true });
-                                res.setHeader('Set-Cookie', [AT]);
+                                res.setHeader('Set-Cookie', [`AT=${ntid}; Expires=Sun, 26 Mar 2023 00:00:00 GMT; HttpOnly; Secure`]);
                                 res.json({ status: 'Successful', redirect: '/' })
                             });
                         } else {
