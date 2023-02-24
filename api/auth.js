@@ -19,12 +19,6 @@ const db = admin.database();
 
 
 function handler(req, res) {
-    const add_token_to_rtdb = ref(db, `authTokens/${Date.now()}`);
-    set(add_token_to_rtdb, {
-        tx: Date.now(),
-        ip: 'xxx',
-        acid: 'xxx'
-    }).then(r => { });
     if (req.body != undefined) {
         let userid = req.body.userid;
         let password = req.body.password;
@@ -43,7 +37,17 @@ function handler(req, res) {
                 setTimeout(() => {
                     bcrypt.compare(password, passRowsActual[0].password).then(auth_res => {
                         if (auth_res) {
-                            res.json({ status: 'Successful', redirect: '/' });
+                            let ntid = v4();
+                            const add_token_to_rtdb = ref(db, `authTokens/${ntid}`);
+                            set(add_token_to_rtdb, {
+                                tx: Date.now(),
+                                ip: req.connection.remoteAddress,
+                                uidd: userid,
+                                uidt: useridType
+                            }).then(r => {
+                                res.cookie('AT', ntid, { httpOnly: true, secure: true });
+                                res.json({ status: 'Successful', redirect: '/' })
+                            }).catch(e => { res.json({ status: 'Auth Failed' }) });
                         } else {
                             res.json({ status: 'Auth Failed' });
                         }
