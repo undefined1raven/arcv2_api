@@ -24,8 +24,16 @@ function handler(req, res) {
                     email: req.body.email,
                     mfa_token: JSON.stringify(mfa_mgr.generateSecret({ length: 40 }))
                 }
-                connection.query('INSERT INTO users SET ?', accountData, (err, resx, fields) => {});
-                res.json({ status: 'Success' });
+                let rowsActual = [];
+                connection.query(`SELECT email FROM users WHERE email = ?`, req.body.email, function (err, rows, fields) {rowsActual = rows});
+                setTimeout(() => {
+                    if(rowsActual.length == 0){
+                        connection.query('INSERT INTO users SET ?', accountData, (err, resx, fields) => {});
+                        res.json({ status: 'Success' });
+                    }else{
+                        res.json({ status: 'Failed', error: 'Account Already Exists' });
+                    }                    
+                }, 300);
             });
         } else {
             res.json({ status: 'Pending' });
