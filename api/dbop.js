@@ -17,16 +17,6 @@ function handler(req, res) {
         // });
         if (req.query['newUser'] != undefined && req.body != undefined) {
             bcrypt.hash(req.body.password, 10).then(hash => {
-                // addRow('users', {
-                //     uid: v4(),
-                //     username: req.body.username,
-                //     password: hash,
-                //     email: req.body.email,
-                //     mfa_token: mfa_mgr.generateSecret({ length: 40 })
-                // }, (err, resx, fields) => {
-                //     console.log(resx);
-                //     console.log(err);
-                // });
                 let accountData = {
                     uid: v4(),
                     username: req.body.username,
@@ -34,14 +24,7 @@ function handler(req, res) {
                     email: req.body.email,
                     mfa_token: JSON.stringify(mfa_mgr.generateSecret({ length: 40 }))
                 }
-                connection.query('INSERT INTO users SET ?', accountData, (err, resx, fields) => {
-                    console.log(resx)
-                });
-                
-                connection.query('SELECT * FROM unn', (err, resa, fields) => {
-                    console.log(resa)
-                });
-
+                connection.query('INSERT INTO users SET ?', accountData, (err, resx, fields) => {});
                 res.json({ status: 'Success' });
             });
         } else {

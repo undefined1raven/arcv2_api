@@ -1,8 +1,11 @@
-const cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: '*' });
+require('dotenv').config()
 const { v4 } = require('uuid');
 const { getDatabase, get, once, increment, remove, query, limitToLast, update, push, set, ref, onValue } = require("firebase/database");
+const cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: '*' });
 const bcrypt = require('bcrypt')
-
+const mysql = require('mysql2')
+const connection = mysql.createConnection(process.env.DB_KEY)
+const mfa_mgr = require('speakeasy');
 
 var admin = require("firebase-admin");
 var serviceAccount = {
@@ -35,7 +38,15 @@ const db = admin.database();
 
 
 function handler(req, res) {
-    res.json({200: '200'})
+    res.json({200: 200})
+    if(req.body != undefined){
+        let userid = req.body.userid;
+        let password = req.body.password;
+        if(userid.indexOf('@') != -1){
+        }
+        connection.query('SELECT email FROM users', (err, resx, fields) => {console.log(`${resx} | ${err}`)});
+        console.log(req.body);
+    }
 }
 
 module.exports = cors(handler);
