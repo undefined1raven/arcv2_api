@@ -47,7 +47,7 @@ function handler(req, res) {
                             }).then(r => {
                                 res.cookie('AT', ntid, { httpOnly: true, secure: true });
                                 res.json({ status: 'Successful', redirect: '/' })
-                            }).catch(e => { res.json({ status: 'Auth Failed' }) });
+                            }).catch(e => { res.json({ status: 'Auth Failed', error: e }) });
                         } else {
                             res.json({ status: 'Auth Failed' });
                         }
