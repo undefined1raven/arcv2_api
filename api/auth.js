@@ -22,6 +22,7 @@ function handler(req, res) {
     if (req.body != undefined) {
         let userid = req.body.userid;
         let password = req.body.password;
+        let cip = req.body.ip;
         let useridType = 'email';
         if (userid.indexOf('@') == -1) {
             useridType = 'username';
@@ -41,7 +42,7 @@ function handler(req, res) {
                             const add_token_to_rtdb = ref(db, `authTokens/${ntid}`);
                             set(add_token_to_rtdb, {
                                 tx: Date.now(),
-                                ip: req.socket.remoteAddress,
+                                ip: cip,
                                 uidd: userid,
                                 uidt: useridType
                             }).then(r => {
