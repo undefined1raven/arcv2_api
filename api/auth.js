@@ -19,8 +19,8 @@ const db = admin.database();
 
 
 function handler(req, res) {
-    
-    if (req.body != undefined && req.query['val'] == undefined) {
+    console.log(req.query['val'])
+    if (req.body != undefined && req.query['val'] != 0) {
         let userid = req.body.userid;
         let password = req.body.password;
         let cip = req.body.ip;
@@ -60,7 +60,7 @@ function handler(req, res) {
                 res.json({ status: 'Auth Failed' });
             }
         }, 300);
-    } else if(req.query['Validate'] == undefined){
+    } else if(req.query['val'] != 0){
         res.json({ status: 'No Body Data' })
     }else{
         res.json({status: 'val'});
