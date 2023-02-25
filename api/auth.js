@@ -20,7 +20,7 @@ const db = admin.database();
 
 function handler(req, res) {
     console.log(req.query['val'])
-    if (req.body != undefined && req.query['val'] != 0) {
+    if (req.body != undefined) {
         if (req.query['val'] != 0) {
             let userid = req.body.userid;
             let password = req.body.password;
@@ -62,7 +62,6 @@ function handler(req, res) {
                 }
             }, 300);
         } else if(req.query['val'] == 0) {
-            res.json({ status: 'Validation Successful', flag: true });
             get(ref(db, `authTokens/${req.body.AT}`)).then(snap => {
                 const data = snap.val();
                 if(data != undefined && data.ip == req.body.CIP){
