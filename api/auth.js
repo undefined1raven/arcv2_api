@@ -41,7 +41,7 @@ function handler(req, res) {
                             const add_token_to_rtdb = ref(db, `authTokens/${ntid}`);
                             set(add_token_to_rtdb, {
                                 tx: Date.now(),
-                                ip: req.connection.remoteAddress,
+                                ip: req.socket.remoteAddress,
                                 uidd: userid,
                                 uidt: useridType
                             }).then(r => {
