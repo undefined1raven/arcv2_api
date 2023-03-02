@@ -57,7 +57,7 @@ function handler(req, res) {
                     if (data != undefined && data.ip == req.body.CIP) {
                         bcrypt.compare(`${req.body.AT}${process.env.AT_SALT}${req.body.CIP}`, data.hash).then(result => {
                             if(result){
-                                connection.query('SELECT foreignUID FROM refs WHERE ownUID ?', data.uid, function(err, rows, fields) {refArr = rows});
+                                connection.query('SELECT foreignUID FROM refs WHERE ownUID ?', data.said, function(err, rows, fields) {refArr = rows});
                                 setTimeout(() => {
                                     console.log(refArr);
                                     res.json({ status: 'Validation Successful', flag: true, refs: refArr });
