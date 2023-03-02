@@ -45,7 +45,7 @@ function handler(req, res) {
                         bcrypt.compare(password, passRowsActual[0].password).then(auth_res => {
                             if (auth_res) {
                                 let ntid = v4();
-                                bcrypt.hash(`${ntid}${cip}`, process.env.AT_HASH, (secHash) => {
+                                bcrypt.hash(`${ntid}${cip}`, 12, (secHash) => {
                                     const add_token_to_rtdb = ref(db, `authTokens/${ntid}`);
                                     set(add_token_to_rtdb, {
                                         tx: Date.now(),
@@ -54,6 +54,7 @@ function handler(req, res) {
                                         uidt: useridType,
                                         hash: secHash 
                                     }).then(r => {
+                                        console.log(secHash)
                                         res.json({ status: 'Successful', redirect: '/', AT: ntid })
                                     }).catch(e => {//ive no idea why but this catch is broken (gets exe even whenn set was successful). its not a security vulnerability anyway cuz if the set failed, then the user would be redirected back to login
                                         res.json({ status: 'Successful', redirect: '/', AT: ntid })
