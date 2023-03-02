@@ -6,7 +6,11 @@ const bcrypt = require('bcrypt')
 const mysql = require('mysql2')
 const connection = mysql.createConnection(process.env.DB_KEY)
 const mfa_mgr = require('speakeasy');
+const jwt = require('jsonwebtoken');
 const { serialize } = require('cookie')
+const fs = require('fs');
+// var privateKey = fs.readFileSync('private-key.pem');
+
 var admin = require("firebase-admin");
 var serviceAccount = JSON.parse(process.env.FIREBASE_SCA);
 
@@ -19,7 +23,7 @@ const db = admin.database();
 
 
 function handler(req, res) {
-    console.log(req.query['val'])
+    // console.log(jwt.sign({iss: serviceAccount.client_email, sub: serviceAccount.client_email, aud: "https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit", iat: Date.now(), exp: 3600, uid: v4()}, privateKey, { algorithm: 'RS256' }))
     if (req.body != undefined) {
         if (req.query['val'] != 0) {
             let userid = req.body.userid;
@@ -41,17 +45,20 @@ function handler(req, res) {
                         bcrypt.compare(password, passRowsActual[0].password).then(auth_res => {
                             if (auth_res) {
                                 let ntid = v4();
-                                const add_token_to_rtdb = ref(db, `authTokens/${ntid}`);
-                                set(add_token_to_rtdb, {
-                                    tx: Date.now(),
-                                    ip: cip,
-                                    uidd: userid,
-                                    uidt: useridType
-                                }).then(r => {
-                                    res.json({ status: 'Successful', redirect: '/', AT: ntid })
-                                }).catch(e => {//ive no idea why but this catch is broken (gets exe even whenn set was successful)
-                                    res.json({ status: 'Successful', redirect: '/', AT: ntid })
-                                });
+                                bcrypt.hash(`${ntid}${cip}`, process.env.AT_HASH, (secHash) => {
+                                    const add_token_to_rtdb = ref(db, `authTokens/${ntid}`);
+                                    set(add_token_to_rtdb, {
+                                        tx: Date.now(),
+                                        ip: cip,
+                                        uidd: userid,
+                                        uidt: useridType,
+                                        hash: secHash 
+                                    }).then(r => {
+                                        res.json({ status: 'Successful', redirect: '/', AT: ntid })
+                                    }).catch(e => {//ive no idea why but this catch is broken (gets exe even whenn set was successful). its not a security vulnerability anyway cuz if the set failed, then the user would be redirected back to login
+                                        res.json({ status: 'Successful', redirect: '/', AT: ntid })
+                                    });
+                                })
                             } else {
                                 res.json({ status: 'Auth Failed' });
                             }
