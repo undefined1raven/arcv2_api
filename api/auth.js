@@ -39,22 +39,22 @@ function handler(req, res) {
             let passRowsActual = [];
             connection.query(`SELECT email FROM users WHERE ${useridType} = ?`, userid, function (err, rows, fields) { rowsActual = rows });
             setTimeout(() => {
-                connection.query(`SELECT password FROM users WHERE ${useridType} = ?`, userid, function (err, rows, fields) { passRowsActual = rows });
+                connection.query(`SELECT password, uid FROM users WHERE ${useridType} = ?`, userid, function (err, rows, fields) { passRowsActual = rows });
                 if (rowsActual.length > 0) {
                     setTimeout(() => {
                         bcrypt.compare(password, passRowsActual[0].password).then(auth_res => {
                             if (auth_res) {
                                 let ntid = v4();
-                                bcrypt.hash(`${ntid}${cip}`, 12, (secHash) => {
+                                bcrypt.hash(`${ntid}${process.env.AT_SALT}${cip}`, 10).then(secHash => {
                                     const add_token_to_rtdb = ref(db, `authTokens/${ntid}`);
                                     set(add_token_to_rtdb, {
                                         tx: Date.now(),
                                         ip: cip,
                                         uidd: userid,
                                         uidt: useridType,
-                                        hash: secHash 
+                                        said: passRowsActual[0].uid,
+                                        hash: secHash
                                     }).then(r => {
-                                        console.log(secHash)
                                         res.json({ status: 'Successful', redirect: '/', AT: ntid })
                                     }).catch(e => {//ive no idea why but this catch is broken (gets exe even whenn set was successful). its not a security vulnerability anyway cuz if the set failed, then the user would be redirected back to login
                                         res.json({ status: 'Successful', redirect: '/', AT: ntid })
@@ -69,12 +69,18 @@ function handler(req, res) {
                     res.json({ status: 'Auth Failed' });
                 }
             }, 300);
-        } else if(req.query['val'] == 0) {
+        } else if (req.query['val'] == 0) {
             get(ref(db, `authTokens/${req.body.AT}`)).then(snap => {
                 const data = snap.val();
-                if(data != undefined && data.ip == req.body.CIP){
-                    res.json({ status: 'Validation Successful', flag: true });
-                }else{
+                if (data != undefined && data.ip == req.body.CIP) {
+                    bcrypt.compare(`${req.body.AT}${process.env.AT_SALT}${req.body.CIP}`, data.hash).then(result => {
+                        if(result){
+                            res.json({ status: 'Validation Successful', flag: true });
+                        }else{
+                            res.json({ status: 'Validation Failed [X9]', redirect: '/login' });
+                        }
+                    })
+                } else {
                     res.json({ status: 'Validation Failed', redirect: '/login' });
                 }
             })
