@@ -43,7 +43,7 @@ function getRefsFromFUIDs(fUID_Arr, res) {
     queryDB(`SELECT username FROM users WHERE uid IN (${FUIDs});`).then(FUID_Names => {
         let refArr = [];
         for (let ix = 0; ix < FUID_Names.length; ix++) {
-            refArr.push({ name: FUID_Names[ix].username, msg: getRandomInt(0, 54), status: Math.random() < .5 ? 'Online' : 'Offline', since: '' });
+            refArr.push({ uid: fUID_Arr[ix].foreignUID, name: FUID_Names[ix].username, msg: getRandomInt(0, 54), status: Math.random() < .5 ? 'Online' : 'Offline', since: '' });
         }
         res.json({ status: 'Validation Successful', flag: true, refs: refArr });
 
