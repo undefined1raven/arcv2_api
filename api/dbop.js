@@ -1,5 +1,5 @@
 require('dotenv').config()
-
+cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: '*' });
 const { v4 } = require('uuid');
 const bcrypt = require('bcrypt')
 const mysql = require('mysql2')
@@ -47,8 +47,8 @@ function getRefsFromFUIDs(fUID_Arr, res) {
     }
     queryDB(`SELECT username FROM users WHERE uid IN (${FUIDs});`).then(FUID_Names => {
         let refArr = [];
-        for(let ix = 0; ix < FUID_Names.length; ix++){
-            refArr.push({name: FUID_Names[ix].username, msg: getRandomInt(0, 54), status: Math.random() < .5 ? 'Online' : 'Offline', since: ''});
+        for (let ix = 0; ix < FUID_Names.length; ix++) {
+            refArr.push({ name: FUID_Names[ix].username, msg: getRandomInt(0, 54), status: Math.random() < .5 ? 'Online' : 'Offline', since: '' });
         }
         res.json({ status: 'Validation Successful', flag: true, refs: refArr });
 
@@ -115,10 +115,12 @@ function handler(req, res) {
     }
 }
 
-if (process.env.NODE_ENV === 'development') {
-    cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: 'http://localhost:3000' });
-    module.exports = cors(handler);
-} else {
-    cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: '*' });
-    module.exports = cors(handler);
-}
+
+// if (process.env.NODE_ENV === 'development') {
+//     cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: 'http://localhost:3000' });
+//     module.exports = cors(handler);
+// } else {
+//     cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: '*' });
+//     module.exports = cors(handler);
+// }
+module.exports = cors(handler);
