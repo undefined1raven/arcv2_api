@@ -1,5 +1,5 @@
 require('dotenv').config()
-cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: '*' });
+const cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: '*' });
 const { v4 } = require('uuid');
 const bcrypt = require('bcrypt')
 const mysql = require('mysql2')
@@ -116,11 +116,4 @@ function handler(req, res) {
 }
 
 
-// if (process.env.NODE_ENV === 'development') {
-//     cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: 'http://localhost:3000' });
-//     module.exports = cors(handler);
-// } else {
-//     cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: '*' });
-//     module.exports = cors(handler);
-// }
 module.exports = cors(handler);
