@@ -1,5 +1,4 @@
 require('dotenv').config()
-const cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: '*' });
 const { v4 } = require('uuid');
 const bcrypt = require('bcrypt')
 const mysql = require('mysql2')
@@ -111,4 +110,11 @@ function handler(req, res) {
     }
 }
 
-module.exports = cors(handler);
+
+if(process.env.NODE_ENV === 'development'){
+    const cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: 'http://localhost:3000' });
+    module.exports = cors(handler);
+}else{
+    const cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: 'https://ring-relay.vercel.app' });
+    module.exports = cors(handler);
+}

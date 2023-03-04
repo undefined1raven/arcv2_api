@@ -1,7 +1,6 @@
 require('dotenv').config()
 const { v4 } = require('uuid');
 const { getDatabase, get, once, increment, remove, query, limitToLast, update, push, set, ref, onValue } = require("firebase/database");
-const cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: '*' });
 const bcrypt = require('bcrypt')
 const mysql = require('mysql2')
 const connection = mysql.createConnection(process.env.DB_KEY)
@@ -90,4 +89,10 @@ function handler(req, res) {
     }
 }
 
-module.exports = cors(handler);
+if(process.env.NODE_ENV === 'development'){
+    const cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: 'http://localhost:3000' });
+    module.exports = cors(handler);
+}else{
+    const cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: 'https://ring-relay.vercel.app' });
+    module.exports = cors(handler);
+}
