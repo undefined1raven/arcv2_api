@@ -119,6 +119,6 @@ if (process.env.NODE_ENV !== 'production') {
     cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: 'http://localhost:3000' });
     module.exports = cors(handler);
 } else {
-    cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: 'https://ring-relay.vercel.app/*' });
+    cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: '*' });
     module.exports = cors(handler);
 }
