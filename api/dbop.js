@@ -116,4 +116,4 @@ function handler(req, res) {
 }
 
 
-module.exports = cors(handler);
+module.exports = handler;
