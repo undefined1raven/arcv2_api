@@ -1,5 +1,5 @@
 require('dotenv').config()
-const cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: '*' });
+
 const { v4 } = require('uuid');
 const bcrypt = require('bcrypt')
 const mysql = require('mysql2')
@@ -14,6 +14,46 @@ function addRow(rowName, data, callback) {
 var admin = require("firebase-admin");
 var serviceAccount = JSON.parse(process.env.FIREBASE_SCA);
 
+function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min) + min); //max e | min i
+}
+
+
+async function queryDB(queryStr) {
+    const DBquery = new Promise((resolve, reject) => {
+        connection.query(queryStr, (err, results) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(results);
+            }
+        })
+    });
+
+    return DBquery;
+}
+
+
+function getRefsFromFUIDs(fUID_Arr, res) {
+    let FUIDs = '';
+    for (let ix = 0; ix < fUID_Arr.length; ix++) {
+        if (ix != fUID_Arr.length - 1) {
+            FUIDs += (`'${fUID_Arr[ix].foreignUID}', `);
+        } else {
+            FUIDs += (`'${fUID_Arr[ix].foreignUID}'`);
+        }
+    }
+    queryDB(`SELECT username FROM users WHERE uid IN (${FUIDs});`).then(FUID_Names => {
+        let refArr = [];
+        for(let ix = 0; ix < FUID_Names.length; ix++){
+            refArr.push({name: FUID_Names[ix].username, msg: getRandomInt(0, 54), status: Math.random() < .5 ? 'Online' : 'Offline', since: ''});
+        }
+        res.json({ status: 'Validation Successful', flag: true, refs: refArr });
+
+    }).catch(errx => console.log(errx))
+}
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -45,24 +85,19 @@ function handler(req, res) {
                     }, 300);
                 });
             }
-            if(req.query['demo'] != undefined){
-                let msgObj = req.body.msgObj 
-                set(ref(db, `messageBuffer/${msgObj.uid}/${Date.now()}`), {...msgObj});
+            if (req.query['demo'] != undefined) {
+                let msgObj = req.body.msgObj
+                set(ref(db, `messageBuffer/${msgObj.uid}/${Date.now()}`), { ...msgObj });
                 console.log(msgObj);
             }
-            if(req.query['getRefs'] != undefined){
+            if (req.query['getRefs'] != undefined) {
                 get(ref(db, `authTokens/${req.body.AT}`)).then(snap => {
                     const data = snap.val();
-                    let refArr = []
                     if (data != undefined && data.ip == req.body.CIP) {
                         bcrypt.compare(`${req.body.AT}${process.env.AT_SALT}${req.body.CIP}`, data.hash).then(result => {
-                            if(result){
-                                connection.query('SELECT foreignUID FROM refs WHERE ownUID ?', data.said, function(err, rows, fields) {refArr = rows});
-                                setTimeout(() => {
-                                    console.log(refArr);
-                                    res.json({ status: 'Validation Successful', flag: true, refs: refArr });
-                                }, 300);
-                            }else{
+                            if (result) {
+                                queryDB(`SELECT foreignUID FROM refs WHERE ownUID="${data.said}"`).then(fUID_Arr => { getRefsFromFUIDs(fUID_Arr, res) }).catch(err => { console.log(err); })
+                            } else {
                                 res.json({ status: 'Access Denied [X9]', redirect: '/login' });
                             }
                         })
@@ -80,4 +115,10 @@ function handler(req, res) {
     }
 }
 
-module.exports = cors(handler);
+if (process.env.NODE_ENV !== 'production') {
+    cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: 'http://localhost:3000' });
+    module.exports = cors(handler);
+} else {
+    cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: 'https://ring-relay.vercel.app' });
+    module.exports = cors(handler);
+}
