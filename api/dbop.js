@@ -115,7 +115,7 @@ function handler(req, res) {
     }
 }
 
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV === 'development') {
     cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: 'http://localhost:3000' });
     module.exports = cors(handler);
 } else {
