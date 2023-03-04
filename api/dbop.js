@@ -7,9 +7,6 @@ const connection = mysql.createConnection(process.env.DB_KEY)
 const mfa_mgr = require('speakeasy');
 const { getDatabase, get, once, increment, remove, query, limitToLast, update, push, set, ref, onValue } = require("firebase/database");
 
-function addRow(rowName, data, callback) {
-    connection.query(`INSERT INTO ${rowName} SET ?`, data, callback);
-}
 
 var admin = require("firebase-admin");
 var serviceAccount = JSON.parse(process.env.FIREBASE_SCA);
@@ -116,4 +113,4 @@ function handler(req, res) {
 }
 
 
-module.exports = handler;
+module.exports = cors(handler);
