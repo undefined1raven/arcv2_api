@@ -4,7 +4,7 @@
 ## Status
 ```diff
 + Front-end required for the features mentioned below completed
-@@ Implementing Back-end @@ [This Repo]
+@@ Implementing Back-end [This Repo] @@ 
 ```
 
 ##### Note: this isn't the repo for the app mentioned on my linkedin or resume, this is a complete remake of the Ring Relay I've built a year ago
