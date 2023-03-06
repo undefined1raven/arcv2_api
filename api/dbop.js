@@ -40,14 +40,18 @@ function getRefsFromFUIDs(fUID_Arr, res) {
             FUIDs += (`'${fUID_Arr[ix].foreignUID}'`);
         }
     }
-    queryDB(`SELECT username FROM users WHERE uid IN (${FUIDs});`).then(FUID_Names => {
-        let refArr = [];
-        for (let ix = 0; ix < FUID_Names.length; ix++) {
-            refArr.push({ uid: fUID_Arr[ix].foreignUID, name: FUID_Names[ix].username, msg: getRandomInt(0, 54), status: Math.random() < .5 ? 'Online' : 'Offline', since: '' });
-        }
-        res.json({ status: 'Validation Successful', flag: true, refs: refArr });
+    if (fUID_Arr.length > 0) {
+        queryDB(`SELECT username FROM users WHERE uid IN (${FUIDs});`).then(FUID_Names => {
+            let refArr = [];
+            for (let ix = 0; ix < FUID_Names.length; ix++) {
+                refArr.push({ uid: fUID_Arr[ix].foreignUID, name: FUID_Names[ix].username, msg: getRandomInt(0, 54), status: Math.random() < .5 ? 'Online' : 'Offline', since: '' });
+            }
+            res.json({ status: 'Validation Successful', flag: true, refs: refArr });
 
-    }).catch(errx => console.log(errx))
+        }).catch(errx => console.log(errx))
+    } else {
+        res.json({ status: 'Validation Successful', flag: true, refs: [] });
+    }
 }
 
 admin.initializeApp({
@@ -66,41 +70,50 @@ function handler(req, res) {
                         username: req.body.username,
                         password: hash,
                         email: req.body.email,
-                        mfa_token: JSON.stringify(mfa_mgr.generateSecret({ length: 40 }))
+                        mfa_token: JSON.stringify(mfa_mgr.generateSecret({ length: 40 })),
+                        publicKey: req.body.PUBKEY
                     }
                     let rowsActual = [];
-                    connection.query(`SELECT email FROM users WHERE email = ?`, req.body.email, function (err, rows, fields) { rowsActual = rows });
-                    setTimeout(() => {
-                        if (rowsActual.length == 0) {
-                            connection.query('INSERT INTO users SET ?', accountData, (err, resx, fields) => { });
+                    queryDB(`SELECT email FROM users WHERE email='${req.body.email}'`).then(resx => {
+                        if (resx.length == 0) {
+                            connection.query('INSERT INTO users SET ?', accountData, (err, resxq, fields) => { });
                             res.json({ status: 'Success' });
                         } else {
-                            res.json({ status: 'Failed', error: 'Account Already Exists' });
+                            res.json({ status: 'Failed', error: `W-${getRandomInt(10, 70)}` });//acount already exists(any X between 10 and 73 for obfuscation)
                         }
-                    }, 300);
+
+                    }).catch(err => res.json({ status: 'Failed', error: `W-${getRandomInt(71, 98)}` }));//db failed;
                 });
             }
-            if (req.query['demo'] != undefined) {
-                let msgObj = req.body.msgObj
-                set(ref(db, `messageBuffer/${msgObj.uid}/${Date.now()}`), { ...msgObj });
-                console.log(msgObj);
-            }
-            if (req.query['getRefs'] != undefined) {
+            if (req.query['newUser'] == undefined) {
                 get(ref(db, `authTokens/${req.body.AT}`)).then(snap => {
                     const data = snap.val();
                     if (data != undefined && data.ip == req.body.CIP) {
-                        bcrypt.compare(`${req.body.AT}${process.env.AT_SALT}${req.body.CIP}`, data.hash).then(result => {
-                            if (result) {
-                                queryDB(`SELECT foreignUID FROM refs WHERE ownUID="${data.said}"`).then(fUID_Arr => { getRefsFromFUIDs(fUID_Arr, res) }).catch(err => { console.log(err); })
-                            } else {
-                                res.json({ status: 'Access Denied [X9]', redirect: '/login' });
-                            }
-                        })
+                        if (req.query['getRefs'] != undefined) {
+                            bcrypt.compare(`${req.body.AT}${process.env.AT_SALT}${req.body.CIP}`, data.hash).then(result => {
+                                if (result) {
+                                    queryDB(`SELECT foreignUID FROM refs WHERE ownUID="${data.said}"`).then(fUID_Arr => { getRefsFromFUIDs(fUID_Arr, res) }).catch(err => { console.log(err); })
+                                } else {
+                                    res.json({ status: 'Access Denied [X9]', redirect: '/login' });
+                                }
+                            })
+                        }
+                        if (req.query['getPubilcKey'] != undefined) {
+                            queryDB(`SELECT publicKey FROM users WHERE uid='${req.body.uid}'`).then(publicKeyArr => {
+                                res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey });
+                            }).catch(e => { res.json({ status: 'Failed to fetch', error: e }) });
+                        }
+                        if (req.query['searchUser'] != undefined) {
+                            queryDB(`SELECT username, uid FROM users WHERE MATCH(username) AGAINST('${req.body.value}*' IN BOOLEAN MODE);`).then(matches => {
+                                res.json({ status: 'Successful', matches: matches });
+                            }).catch(e => res.json({ status: 'Failed', error: e }));
+                        }
                     } else {
                         res.json({ status: 'Access Denied', redirect: '/login' });
                     }
                 })
             }
+
         } else {
             res.json({ status: 'Pending' });
         }
@@ -111,10 +124,10 @@ function handler(req, res) {
 }
 
 
-if(process.env.NODE_ENV === 'development'){
+if (process.env.NODE_ENV === 'development') {
     const cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: 'http://localhost:3000' });
     module.exports = cors(handler);
-}else{
+} else {
     const cors = require('micro-cors')({ allowMethods: ['GET', 'POST'], origin: 'https://ring-relay.vercel.app' });
     module.exports = cors(handler);
 }
