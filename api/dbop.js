@@ -33,18 +33,30 @@ async function queryDB(queryStr) {
 
 function getRefsFromFUIDs(fUID_Arr, res) {
     let FUIDs = '';
-    for (let ix = 0; ix < fUID_Arr.length; ix++) {
-        if (ix != fUID_Arr.length - 1) {
-            FUIDs += (`'${fUID_Arr[ix].foreignUID}', `);
-        } else {
-            FUIDs += (`'${fUID_Arr[ix].foreignUID}'`);
+
+    let approved_fUID_Arr = fUID_Arr.filter(ref => ref.status == 'Approved');
+
+
+    if (approved_fUID_Arr.length > 1) {
+
+        for (let ix = 0; ix < approved_fUID_Arr.length; ix++) {
+            if (approved_fUID_Arr[ix].status == 'Approved' || approved_fUID_Arr[ix].status == '') {
+                if (ix != approved_fUID_Arr.length - 1) {
+                    FUIDs += (`'${approved_fUID_Arr[ix].foreignUID}', `);
+                } else {
+                    approved_fUID_Arr += (`'${approved_fUID_Arr[ix].foreignUID}'`);
+                }
+            }
         }
+    } else {
+        FUIDs = `'${approved_fUID_Arr[0].foreignUID}'`
     }
-    if (fUID_Arr.length > 0) {
+
+    if (approved_fUID_Arr.length > 0) {
         queryDB(`SELECT username FROM users WHERE uid IN (${FUIDs});`).then(FUID_Names => {
             let refArr = [];
             for (let ix = 0; ix < FUID_Names.length; ix++) {
-                refArr.push({ uid: fUID_Arr[ix].foreignUID, name: FUID_Names[ix].username, msg: getRandomInt(0, 54), status: Math.random() < .5 ? 'Online' : 'Offline', since: '' });
+                refArr.push({ uid: approved_fUID_Arr[ix].foreignUID, name: FUID_Names[ix].username, msg: getRandomInt(0, 54), status: Math.random() < .5 ? 'Online' : 'Offline', since: '' });
             }
             res.json({ status: 'Validation Successful', flag: true, refs: refArr });
 
@@ -92,7 +104,7 @@ function handler(req, res) {
                         if (req.query['getRefs'] != undefined) {
                             bcrypt.compare(`${req.body.AT}${process.env.AT_SALT}${req.body.CIP}`, data.hash).then(result => {
                                 if (result) {
-                                    queryDB(`SELECT foreignUID FROM refs WHERE ownUID="${data.said}"`).then(fUID_Arr => { getRefsFromFUIDs(fUID_Arr, res) }).catch(err => { console.log(err); })
+                                    queryDB(`SELECT foreignUID, status FROM refs WHERE ownUID="${data.said}"`).then(fUID_Arr => { getRefsFromFUIDs(fUID_Arr, res) }).catch(err => { console.log(err); })
                                 } else {
                                     res.json({ status: 'Access Denied [X9]', redirect: '/login' });
                                 }
@@ -113,6 +125,29 @@ function handler(req, res) {
                                 queryDB(`INSERT INTO refs(ownUID, foreignUID, status) VALUES('${req.body.remoteUID}', '${data.said}', 'Pending.RX')`).then(() => { });
                                 res.json({ status: 'Successful' });
                             }).catch(e => { res.json({ status: 'Failed', error: e }) });
+                        }
+                        if (req.query['getRequests'] != undefined) {
+                            queryDB(`SELECT foreignUID, status FROM refs WHERE ownUID='${data.said}'`).then(refs => {
+                                let activeRequestsArr = [];
+                                let usernameQueryWhere = '';
+                                let typeObjects = {};
+                                for (let ix = 0; ix < refs.length; ix++) {
+                                    if (refs[ix].status != 'Approved') {
+                                        if (ix != refs.length - 1) {
+                                            usernameQueryWhere += `uid='${refs[ix].foreignUID}' OR `
+                                        } else {
+                                            usernameQueryWhere += `uid='${refs[ix].foreignUID}'`
+                                        }
+                                        typeObjects[refs[ix].foreignUID] = { status: refs[ix].status };
+                                    }
+                                }
+                                queryDB(`SELECT username, uid FROM users WHERE ${usernameQueryWhere}`).then(usernames => {
+                                    for (let ix = 0; ix < usernames.length; ix++) {
+                                        activeRequestsArr.push({ type: typeObjects[usernames[ix].uid].status, foreignUID: usernames[ix].uid, username: usernames[ix].username });
+                                    }
+                                    res.json({ status: 'Successful', activeRequests: activeRequestsArr });
+                                }).catch(e => res.json({ status: 'Failed', error: e }))
+                            }).catch(e => res.json({ status: 'Failed', error: e }))
                         }
                     } else {
                         res.json({ status: 'Access Denied', redirect: '/login' });
