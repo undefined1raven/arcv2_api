@@ -49,7 +49,11 @@ function getRefsFromFUIDs(fUID_Arr, res) {
             }
         }
     } else {
-        FUIDs = `'${approved_fUID_Arr[0].foreignUID}'`
+        if (approved_fUID_Arr.length == 0) {
+            res.json({ status: 'Validation Success', refs: [] });
+        } else {
+            FUIDs = `'${approved_fUID_Arr[0].foreignUID}'`
+        }
     }
 
     if (approved_fUID_Arr.length > 0) {
@@ -58,11 +62,11 @@ function getRefsFromFUIDs(fUID_Arr, res) {
             for (let ix = 0; ix < FUID_Names.length; ix++) {
                 refArr.push({ uid: approved_fUID_Arr[ix].foreignUID, name: FUID_Names[ix].username, msg: getRandomInt(0, 54), status: Math.random() < .5 ? 'Online' : 'Offline', since: '' });
             }
-            res.json({ status: 'Validation Successful', flag: true, refs: refArr });
+            res.json({ status: 'Validation Successful', refs: refArr });
 
         }).catch(errx => console.log(errx))
     } else {
-        res.json({ status: 'Validation Successful', flag: true, refs: [] });
+        res.json({ status: 'Validation Successful', refs: [] });
     }
 }
 
