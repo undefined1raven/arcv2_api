@@ -108,6 +108,12 @@ function handler(req, res) {
                                 res.json({ status: 'Successful', matches: matches });
                             }).catch(e => res.json({ status: 'Failed', error: e }));
                         }
+                        if (req.query['addNewContact'] != undefined) {
+                            queryDB(`INSERT INTO refs(ownUID, foreignUID, status) VALUES('${data.said}', '${req.body.remoteUID}', 'Pending.TX')`).then(() => {
+                                queryDB(`INSERT INTO refs(ownUID, foreignUID, status) VALUES('${req.body.remoteUID}', '${data.said}', 'Pending.RX')`).then(() => { });
+                                res.json({ status: 'Successful' });
+                            }).catch(e => { res.json({ status: 'Failed', error: e }) });
+                        }
                     } else {
                         res.json({ status: 'Access Denied', redirect: '/login' });
                     }
