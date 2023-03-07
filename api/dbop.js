@@ -31,8 +31,8 @@ async function queryDB(queryStr) {
 }
 
 
-function sendErrorResponse(res, e) {
-    res.json({ status: 'Failed', error: e });
+function sendErrorResponse(res, e, id) {
+    res.json({ status: 'Failed', error: e, id: id != undefined ? id : 'Not Specified' });
 }
 
 function getRefsFromFUIDs(fUID_Arr, res) {
@@ -134,18 +134,27 @@ function handler(req, res) {
                         }
                         if (req.query['getRequests'] != undefined) {
                             queryDB(`SELECT foreignUID, status FROM refs WHERE ownUID='${data.said}'`).then(refs => {
+                                let pendingRequestsArr = [];
+                                for(let ix = 0; ix < refs.length; ix++){
+                                    if(refs[ix].status != 'Approved'){
+                                        pendingRequestsArr.push({...refs[ix]});
+                                    }
+                                }
                                 let activeRequestsArr = [];
                                 let usernameQueryWhere = '';
                                 let typeObjects = {};
-                                for (let ix = 0; ix < refs.length; ix++) {
-                                    if (refs[ix].status != 'Approved') {
-                                        if (ix != refs.length - 1) {
-                                            usernameQueryWhere += `uid='${refs[ix].foreignUID}' OR `
+                                if (pendingRequestsArr.length > 1) {
+                                    for (let ix = 0; ix < pendingRequestsArr.length; ix++) {
+                                        if (ix != pendingRequestsArr.length - 1) {
+                                            usernameQueryWhere += `uid='${pendingRequestsArr[ix].foreignUID}' OR `
                                         } else {
-                                            usernameQueryWhere += `uid='${refs[ix].foreignUID}'`
+                                            usernameQueryWhere += `uid='${pendingRequestsArr[ix].foreignUID}'`
                                         }
-                                        typeObjects[refs[ix].foreignUID] = { status: refs[ix].status };
+                                        typeObjects[pendingRequestsArr[ix].foreignUID] = { status: pendingRequestsArr[ix].status };
                                     }
+                                } else if (pendingRequestsArr.length == 1) {
+                                    usernameQueryWhere += `uid='${pendingRequestsArr[0].foreignUID}'`
+                                    typeObjects[pendingRequestsArr[0].foreignUID] = { status: pendingRequestsArr[0].status };
                                 }
                                 queryDB(`SELECT username, uid FROM users WHERE ${usernameQueryWhere}`).then(usernames => {
                                     for (let ix = 0; ix < usernames.length; ix++) {
@@ -153,7 +162,7 @@ function handler(req, res) {
                                     }
                                     res.json({ status: 'Successful', activeRequests: activeRequestsArr });
                                 }).catch(e => sendErrorResponse(res, e))
-                            }).catch(e => sendErrorResponse(res, e))
+                            }).catch(e => sendErrorResponse(res, e, 'X4552'))
                         }
                         if (req.query['cancelRequest'] != undefined) {
                             queryDB(`DELETE FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.foreignUID}'`).then(resx => {
