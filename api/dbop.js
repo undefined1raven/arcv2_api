@@ -166,8 +166,10 @@ function handler(req, res) {
                         }
                         if (req.query['cancelRequest'] != undefined) {
                             queryDB(`DELETE FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.foreignUID}'`).then(resx => {
-                                res.json({ status: 'Successful' });
-                            }).catch(e => { sendErrorResponse(res, e) })
+                                queryDB(`DELETE FROM refs WHERE ownUID='${req.body.foreignUID}' AND foreignUID='${data.said}'`).then(resx => {
+                                    res.json({ status: 'Successful' });
+                                }).catch(e => sendErrorResponse(res, e, 'X110'));
+                            }).catch(e => { sendErrorResponse(res, e, 'X114') })
                         }
                         if (req.query['updateRequest'] != undefined) {
                             if (req.body.approved === true) {
