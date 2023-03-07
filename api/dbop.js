@@ -44,14 +44,14 @@ function getRefsFromFUIDs(fUID_Arr, res) {
                 if (ix != approved_fUID_Arr.length - 1) {
                     FUIDs += (`'${approved_fUID_Arr[ix].foreignUID}', `);
                 } else {
-                    approved_fUID_Arr += (`'${approved_fUID_Arr[ix].foreignUID}'`);
+                    FUIDs += (`'${approved_fUID_Arr[ix].foreignUID}'`);
                 }
             }
         }
     } else {
         if (approved_fUID_Arr.length == 0) {
             res.json({ status: 'Validation Success', refs: [] });
-        } else {
+        } else if(approved_fUID_Arr.length == 1) {
             FUIDs = `'${approved_fUID_Arr[0].foreignUID}'`
         }
     }
