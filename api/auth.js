@@ -48,7 +48,7 @@ function handler(req, res) {
             } else {
                 useridType = 'email';
             }
-            queryDB(`SELECT email, password, uid FROM users WHERE ${useridType}='${userid}'`).then(userObjArray => {
+            queryDB(`SELECT email, password, uid, username FROM users WHERE ${useridType}='${userid}'`).then(userObjArray => {
                 let user = userObjArray[0];
                 if (userObjArray.length > 0) {
                     bcrypt.compare(password, user.password).then(auth_res => {
@@ -62,7 +62,8 @@ function handler(req, res) {
                                     uidd: userid,
                                     uidt: useridType,
                                     said: user.uid,//standard uid
-                                    hash: secHash
+                                    hash: secHash,
+                                    username: user.username
                                 }).then(r => {
                                     res.json({ status: 'Successful', redirect: '/', AT: ntid })
                                 }).catch(e => {
@@ -83,7 +84,7 @@ function handler(req, res) {
                 if (data != undefined && data.ip == req.body.CIP) {
                     bcrypt.compare(`${req.body.AT}${process.env.AT_SALT}${req.body.CIP}`, data.hash).then(result => {
                         if (result) {
-                            res.json({ status: 'Validation Successful', flag: true, PKGetter: `${data.said.split('-')[0]}-${data.said.split('-')[4]}` });
+                            res.json({ status: 'Validation Successful', flag: true, PKGetter: `${data.said.split('-')[0]}-${data.said.split('-')[4]}`, username: data.username });
                         } else {
                             res.json({ status: 'Validation Failed [X9]', redirect: '/login' });
                         }
