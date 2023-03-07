@@ -31,6 +31,10 @@ async function queryDB(queryStr) {
 }
 
 
+function sendErrorResponse(res, e) {
+    res.json({ status: 'Failed', error: e });
+}
+
 function getRefsFromFUIDs(fUID_Arr, res) {
     let FUIDs = '';
 
@@ -115,18 +119,18 @@ function handler(req, res) {
                         if (req.query['getPubilcKey'] != undefined) {
                             queryDB(`SELECT publicKey FROM users WHERE uid='${req.body.uid}'`).then(publicKeyArr => {
                                 res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey });
-                            }).catch(e => { res.json({ status: 'Failed to fetch', error: e }) });
+                            }).catch(e => { sendErrorResponse(res, e) });
                         }
                         if (req.query['searchUser'] != undefined) {
                             queryDB(`SELECT username, uid FROM users WHERE MATCH(username) AGAINST('${req.body.value}*' IN BOOLEAN MODE);`).then(matches => {
                                 res.json({ status: 'Successful', matches: matches });
-                            }).catch(e => res.json({ status: 'Failed', error: e }));
+                            }).catch(e => sendErrorResponse(res, e));
                         }
                         if (req.query['addNewContact'] != undefined) {
                             queryDB(`INSERT INTO refs(ownUID, foreignUID, status) VALUES('${data.said}', '${req.body.remoteUID}', 'Pending.TX')`).then(() => {
                                 queryDB(`INSERT INTO refs(ownUID, foreignUID, status) VALUES('${req.body.remoteUID}', '${data.said}', 'Pending.RX')`).then(() => { });
                                 res.json({ status: 'Successful' });
-                            }).catch(e => { res.json({ status: 'Failed', error: e }) });
+                            }).catch(e => { sendErrorResponse(res, e) });
                         }
                         if (req.query['getRequests'] != undefined) {
                             queryDB(`SELECT foreignUID, status FROM refs WHERE ownUID='${data.said}'`).then(refs => {
@@ -148,23 +152,25 @@ function handler(req, res) {
                                         activeRequestsArr.push({ type: typeObjects[usernames[ix].uid].status, foreignUID: usernames[ix].uid, username: usernames[ix].username });
                                     }
                                     res.json({ status: 'Successful', activeRequests: activeRequestsArr });
-                                }).catch(e => res.json({ status: 'Failed', error: e }))
-                            }).catch(e => res.json({ status: 'Failed', error: e }))
+                                }).catch(e => sendErrorResponse(res, e))
+                            }).catch(e => sendErrorResponse(res, e))
                         }
                         if (req.query['cancelRequest'] != undefined) {
                             queryDB(`DELETE FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.foreignUID}'`).then(resx => {
                                 res.json({ status: 'Successful' });
-                            }).catch(e => { res.json({ status: 'Failed', error: e }); })
+                            }).catch(e => { sendErrorResponse(res, e) })
                         }
                         if (req.query['updateRequest'] != undefined) {
                             if (req.body.approved === true) {
                                 queryDB(`UPDATE refs SET status='Approved' WHERE ownUID='${data.said}' AND foreignUID='${req.body.foreignUID}'`).then(resx => {
-                                    res.json({ status: 'Successful' });
-                                }).catch(e => { res.json({ status: 'Failed', error: e }); });
-                            } else if(req.body.approved === false) {
+                                    queryDB(`UPDATE refs SET status='Approved' WHERE ownUID='${req.body.foreignUID}' AND foreignUID='${data.said}'`).then(resx => {
+                                        res.json({ status: 'Successful' });
+                                    }).catch(e => { sendErrorResponse(res, e) });
+                                }).catch(e => { sendErrorResponse(res, e) });
+                            } else if (req.body.approved === false) {
                                 queryDB(`DELETE FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.foreignUID}'`).then(resx => {
                                     res.json({ status: 'Successful' });
-                                }).catch(e => { res.json({ status: 'Failed', error: e }); });
+                                }).catch(e => { sendErrorResponse(res, e) });
                             }
                         }
                     } else {
