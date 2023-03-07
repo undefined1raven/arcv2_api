@@ -65,8 +65,6 @@ function getRefsFromFUIDs(fUID_Arr, res) {
             res.json({ status: 'Validation Successful', refs: refArr });
 
         }).catch(errx => console.log(errx))
-    } else {
-        res.json({ status: 'Validation Successful', refs: [] });
     }
 }
 
