@@ -51,7 +51,7 @@ function getRefsFromFUIDs(fUID_Arr, res) {
     } else {
         if (approved_fUID_Arr.length == 0) {
             res.json({ status: 'Validation Success', refs: [] });
-        } else if(approved_fUID_Arr.length == 1) {
+        } else if (approved_fUID_Arr.length == 1) {
             FUIDs = `'${approved_fUID_Arr[0].foreignUID}'`
         }
     }
@@ -150,6 +150,22 @@ function handler(req, res) {
                                     res.json({ status: 'Successful', activeRequests: activeRequestsArr });
                                 }).catch(e => res.json({ status: 'Failed', error: e }))
                             }).catch(e => res.json({ status: 'Failed', error: e }))
+                        }
+                        if (req.query['cancelRequest'] != undefined) {
+                            queryDB(`DELETE FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.foreignUID}'`).then(resx => {
+                                res.json({ status: 'Successful' });
+                            }).catch(e => { res.json({ status: 'Failed', error: e }); })
+                        }
+                        if (req.query['updateRequest'] != undefined) {
+                            if (req.body.approved === true) {
+                                queryDB(`UPDATE refs SET status='Approved' WHERE ownUID='${data.said}' AND foreignUID='${req.body.foreignUID}'`).then(resx => {
+                                    res.json({ status: 'Successful' });
+                                }).catch(e => { res.json({ status: 'Failed', error: e }); });
+                            } else if(req.body.approved === false) {
+                                queryDB(`DELETE FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.foreignUID}'`).then(resx => {
+                                    res.json({ status: 'Successful' });
+                                }).catch(e => { res.json({ status: 'Failed', error: e }); });
+                            }
                         }
                     } else {
                         res.json({ status: 'Access Denied', redirect: '/login' });
