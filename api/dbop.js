@@ -131,7 +131,7 @@ function handler(req, res) {
                             }).catch(e => sendErrorResponse(res, e));
                         }
                         if (req.query['addNewContact'] != undefined) {
-                            queryDB(`INSERT INTO refs(ownUID, foreignUID, status, initiatorUID) VALUES('${data.said}', '${req.body.remoteUID}', 'Pending.TX'), '${data.said}'`).then(() => {
+                            queryDB(`INSERT INTO refs(ownUID, foreignUID, status, initiatorUID) VALUES('${data.said}', '${req.body.remoteUID}', 'Pending.TX', '${data.said}')`).then(() => {
                                 queryDB(`INSERT INTO refs(ownUID, foreignUID, status, initiatorUID) VALUES('${req.body.remoteUID}', '${data.said}', 'Pending.RX', '${data.said}')`).then(() => { });
                                 res.json({ status: 'Successful' });
                             }).catch(e => { sendErrorResponse(res, e) });
