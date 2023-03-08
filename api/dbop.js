@@ -131,8 +131,10 @@ function handler(req, res) {
                             }).catch(e => sendErrorResponse(res, e));
                         }
                         if (req.query['addNewContact'] != undefined) {
-                            queryDB(`INSERT INTO refs(ownUID, foreignUID, status, initiatorUID) VALUES('${data.said}', '${req.body.remoteUID}', 'Pending.TX', '${data.said}')`).then(() => {
-                                queryDB(`INSERT INTO refs(ownUID, foreignUID, status, initiatorUID) VALUES('${req.body.remoteUID}', '${data.said}', 'Pending.RX', '${data.said}')`).then(() => { });
+                            let uidFragments = data.said.split('-');
+                            let messagePermaStorageTableName = `MS${uidFragments[0]}${uidFragments[1]}${uidFragments[2]}${uidFragments[3]}${uidFragments[4]}`;
+                            queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID) VALUES('${data.said}', '${req.body.remoteUID}', 'Pending.TX', '${messagePermaStorageTableName}')`).then(() => {
+                                queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID) VALUES('${req.body.remoteUID}', '${data.said}', 'Pending.RX', '${messagePermaStorageTableName}')`).then(() => { });
                                 res.json({ status: 'Successful' });
                             }).catch(e => { sendErrorResponse(res, e) });
                         }
