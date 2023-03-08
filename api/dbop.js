@@ -123,7 +123,7 @@ function handler(req, res) {
                         }
                         if (req.query['searchUser'] != undefined) {
                             queryDB(`SELECT username, uid FROM users WHERE MATCH(username) AGAINST('${req.body.value}*' IN BOOLEAN MODE);`).then(matches => {
-                                res.json({ status: 'Successful', matches: matches });
+                                res.json({ status: 'Successful', matches: matches.filter(elm => elm.uid != data.said) });
                             }).catch(e => sendErrorResponse(res, e));
                         }
                         if (req.query['addNewContact'] != undefined) {
