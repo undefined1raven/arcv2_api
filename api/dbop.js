@@ -209,7 +209,7 @@ function handler(req, res) {
                                             typedMsgArr.push({ ...resx[ix], type: 'tx' });
                                         }
                                     }
-                                    res.json({ status: 'Successful', messages: typedMsgArr });
+                                    res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID });
                                 }).catch(e => sendErrorResponse(res, e));
                             }).catch(e => sendErrorResponse(res, e))
                         }
@@ -221,6 +221,11 @@ function handler(req, res) {
                                     res.json({ status: 'Sent' });
                                 }).catch(e => sendErrorResponse(res, e, 'MSG-2'));
                             }).catch(e => sendErrorResponse(res, e, 'MSG-0'));
+                        }
+                        if (req.query['likeMessage'] != undefined) {
+                            queryDB(`UPDATE ${req.body.MSUID} SET liked=${req.body.state} WHERE MID='${req.body.MID}'`).then(resx => {
+                                res.json({ status: 'Successful' });
+                            }).catch(e => sendErrorResponse(res, e, 'MSG-150'));
                         }
                     } else {
                         res.json({ status: 'Access Denied', redirect: '/login' });
