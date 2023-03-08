@@ -83,19 +83,23 @@ function handler(req, res) {
         if (req.body != undefined) {
             if (req.query['newUser'] != undefined) {
                 bcrypt.hash(req.body.password, 10).then(hash => {
+                    let nuid = v4(); 
                     let accountData = {
-                        uid: v4(),
+                        uid: nuid,
                         username: req.body.username,
                         password: hash,
                         email: req.body.email,
                         mfa_token: JSON.stringify(mfa_mgr.generateSecret({ length: 40 })),
                         publicKey: req.body.PUBKEY
                     }
-                    let rowsActual = [];
                     queryDB(`SELECT email FROM users WHERE email='${req.body.email}'`).then(resx => {
                         if (resx.length == 0) {
                             connection.query('INSERT INTO users SET ?', accountData, (err, resxq, fields) => { });
-                            res.json({ status: 'Success' });
+                            let nuidFragments = nuid.split('-');
+                            let MSName = `MS${nuidFragments[0]}${nuidFragments[1]}${nuidFragments[2]}${nuidFragments[3]}${nuidFragments[4]}`;
+                            queryDB(`CREATE TABLE ${MSName}(type varchar(2), liked BOOLEAN, tx int, seen BOOLEAN, auth BOOLEAN, content text, targetUID varchar(80), MID varchar(80))`).then(resx => {
+                                res.json({ status: 'Success' });
+                            }).catch(e => sendErrorResponse(res, e, 'X-MS-UID'));
                         } else {
                             res.json({ status: 'Failed', error: `W-${getRandomInt(10, 70)}` });//acount already exists(any X between 10 and 73 for obfuscation)
                         }
@@ -127,8 +131,8 @@ function handler(req, res) {
                             }).catch(e => sendErrorResponse(res, e));
                         }
                         if (req.query['addNewContact'] != undefined) {
-                            queryDB(`INSERT INTO refs(ownUID, foreignUID, status) VALUES('${data.said}', '${req.body.remoteUID}', 'Pending.TX')`).then(() => {
-                                queryDB(`INSERT INTO refs(ownUID, foreignUID, status) VALUES('${req.body.remoteUID}', '${data.said}', 'Pending.RX')`).then(() => { });
+                            queryDB(`INSERT INTO refs(ownUID, foreignUID, status, initiatorUID) VALUES('${data.said}', '${req.body.remoteUID}', 'Pending.TX'), '${data.said}'`).then(() => {
+                                queryDB(`INSERT INTO refs(ownUID, foreignUID, status, initiatorUID) VALUES('${req.body.remoteUID}', '${data.said}', 'Pending.RX', '${data.said}')`).then(() => { });
                                 res.json({ status: 'Successful' });
                             }).catch(e => { sendErrorResponse(res, e) });
                         }
@@ -183,6 +187,14 @@ function handler(req, res) {
                                     res.json({ status: 'Successful' });
                                 }).catch(e => { sendErrorResponse(res, e) });
                             }
+                        }
+                        if(req.query['getMessages'] != undefined){
+                            let uidFragments = data.said.split('-');
+                            let messagePermaStorageTableName = `MS${uidFragments[0]}${uidFragments[1]}${uidFragments[2]}${uidFragments[3]}${uidFragments[4]}`;
+                            let selectColumnsArr = 'type, liked, tx, seen, auth, content, MID';
+                            queryDB(`SELECT ${selectColumnsArr} FROM ${messagePermaStorageTableName} WHERE targetUID='${req.body.targetUID}' ORDER BY tx LIMIT ${req.body.count}`).then(resx => {
+                                res.json({status: 'Successful', messages: resx});
+                            }).catch(e => sendErrorResponse(res, e));
                         }
                     } else {
                         res.json({ status: 'Access Denied', redirect: '/login' });
