@@ -83,7 +83,7 @@ function handler(req, res) {
         if (req.body != undefined) {
             if (req.query['newUser'] != undefined) {
                 bcrypt.hash(req.body.password, 10).then(hash => {
-                    let nuid = v4(); 
+                    let nuid = v4();
                     let accountData = {
                         uid: nuid,
                         username: req.body.username,
@@ -97,7 +97,7 @@ function handler(req, res) {
                             connection.query('INSERT INTO users SET ?', accountData, (err, resxq, fields) => { });
                             let nuidFragments = nuid.split('-');
                             let MSName = `MS${nuidFragments[0]}${nuidFragments[1]}${nuidFragments[2]}${nuidFragments[3]}${nuidFragments[4]}`;
-                            queryDB(`CREATE TABLE ${MSName}(type varchar(2), liked BOOLEAN, tx int, seen BOOLEAN, auth BOOLEAN, content text, targetUID varchar(80), MID varchar(80))`).then(resx => {
+                            queryDB(`CREATE TABLE ${MSName}(type varchar(2), liked BOOLEAN, tx varchar(150), seen BOOLEAN, auth BOOLEAN, ownContent text, remoteContent text, targetUID varchar(80), MID varchar(80))`).then(resx => {
                                 res.json({ status: 'Success' });
                             }).catch(e => sendErrorResponse(res, e, 'X-MS-UID'));
                         } else {
@@ -121,9 +121,15 @@ function handler(req, res) {
                             })
                         }
                         if (req.query['getPubilcKey'] != undefined) {
-                            queryDB(`SELECT publicKey FROM users WHERE uid='${req.body.uid}'`).then(publicKeyArr => {
-                                res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey });
-                            }).catch(e => { sendErrorResponse(res, e) });
+                            if (req.body.uid == 'self') {
+                                queryDB(`SELECT publicKey FROM users WHERE uid='${data.said}'`).then(publicKeyArr => {
+                                    res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey });
+                                }).catch(e => { sendErrorResponse(res, e) });
+                            } else {
+                                queryDB(`SELECT publicKey FROM users WHERE uid='${req.body.uid}'`).then(publicKeyArr => {
+                                    res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey });
+                                }).catch(e => { sendErrorResponse(res, e) });
+                            }
                         }
                         if (req.query['searchUser'] != undefined) {
                             queryDB(`SELECT username, uid FROM users WHERE MATCH(username) AGAINST('${req.body.value}*' IN BOOLEAN MODE);`).then(matches => {
@@ -141,9 +147,9 @@ function handler(req, res) {
                         if (req.query['getRequests'] != undefined) {
                             queryDB(`SELECT foreignUID, status FROM refs WHERE ownUID='${data.said}'`).then(refs => {
                                 let pendingRequestsArr = [];
-                                for(let ix = 0; ix < refs.length; ix++){
-                                    if(refs[ix].status != 'Approved'){
-                                        pendingRequestsArr.push({...refs[ix]});
+                                for (let ix = 0; ix < refs.length; ix++) {
+                                    if (refs[ix].status != 'Approved') {
+                                        pendingRequestsArr.push({ ...refs[ix] });
                                     }
                                 }
                                 let activeRequestsArr = [];
@@ -190,13 +196,22 @@ function handler(req, res) {
                                 }).catch(e => { sendErrorResponse(res, e) });
                             }
                         }
-                        if(req.query['getMessages'] != undefined){
+                        if (req.query['getMessages'] != undefined) {
                             let uidFragments = data.said.split('-');
                             let messagePermaStorageTableName = `MS${uidFragments[0]}${uidFragments[1]}${uidFragments[2]}${uidFragments[3]}${uidFragments[4]}`;
-                            let selectColumnsArr = 'type, liked, tx, seen, auth, content, MID';
+                            let selectColumnsArr = 'type, liked, tx, seen, auth, ownContent, remoteContent, MID';
                             queryDB(`SELECT ${selectColumnsArr} FROM ${messagePermaStorageTableName} WHERE targetUID='${req.body.targetUID}' ORDER BY tx LIMIT ${req.body.count}`).then(resx => {
-                                res.json({status: 'Successful', messages: resx});
+                                res.json({ status: 'Successful', messages: resx });
                             }).catch(e => sendErrorResponse(res, e));
+                        }
+                        if (req.query['messageSent'] != undefined) {
+                            queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUID_Arr => {
+                                let MSUID = MSUID_Arr[0].MSUID;
+                                let msgObj = req.body;
+                                queryDB(`INSERT INTO ${MSUID}(type, liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID) VALUES('${msgObj.type}', ${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${v4()}${v4()}')`).then(resx => {
+                                    res.json({ status: 'Sent' });
+                                }).catch(e => sendErrorResponse(res, e, 'MSG-2'));
+                            }).catch(e => sendErrorResponse(res, e, 'MSG-0'));
                         }
                     } else {
                         res.json({ status: 'Access Denied', redirect: '/login' });
