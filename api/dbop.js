@@ -97,7 +97,7 @@ function handler(req, res) {
                             connection.query('INSERT INTO users SET ?', accountData, (err, resxq, fields) => { });
                             let nuidFragments = nuid.split('-');
                             let MSName = `MS${nuidFragments[0]}${nuidFragments[1]}${nuidFragments[2]}${nuidFragments[3]}${nuidFragments[4]}`;
-                            queryDB(`CREATE TABLE ${MSName}(type varchar(2), liked BOOLEAN, tx varchar(150), seen BOOLEAN, auth BOOLEAN, ownContent text, remoteContent text, targetUID varchar(80), MID varchar(80))`).then(resx => {
+                            queryDB(`CREATE TABLE ${MSName}(liked BOOLEAN, tx varchar(150), seen BOOLEAN, auth BOOLEAN, ownContent text, remoteContent text, targetUID varchar(80), MID varchar(80))`).then(resx => {
                                 res.json({ status: 'Success' });
                             }).catch(e => sendErrorResponse(res, e, 'X-MS-UID'));
                         } else {
@@ -199,16 +199,24 @@ function handler(req, res) {
                         if (req.query['getMessages'] != undefined) {
                             let uidFragments = data.said.split('-');
                             let messagePermaStorageTableName = `MS${uidFragments[0]}${uidFragments[1]}${uidFragments[2]}${uidFragments[3]}${uidFragments[4]}`;
-                            let selectColumnsArr = 'type, liked, tx, seen, auth, ownContent, remoteContent, MID';
-                            queryDB(`SELECT ${selectColumnsArr} FROM ${messagePermaStorageTableName} WHERE targetUID='${req.body.targetUID}' ORDER BY tx LIMIT ${req.body.count}`).then(resx => {
-                                res.json({ status: 'Successful', messages: resx });
+                            let selectColumnsArr = 'liked, tx, seen, auth, ownContent, remoteContent, MID, targetUID';
+                            queryDB(`SELECT ${selectColumnsArr} FROM ${messagePermaStorageTableName} WHERE targetUID='${req.body.targetUID}' OR targetUID='${data.said}' ORDER BY tx LIMIT ${req.body.count}`).then(resx => {
+                                let typedMsgArr = []
+                                for (let ix = 0; ix < resx.length; ix++) {
+                                    if (resx[ix].targetUID == data.said) {
+                                        typedMsgArr.push({ ...resx[ix], type: 'rx' });
+                                    } else {
+                                        typedMsgArr.push({ ...resx[ix], type: 'tx' });
+                                    }
+                                }
+                                res.json({ status: 'Successful', messages: typedMsgArr });
                             }).catch(e => sendErrorResponse(res, e));
                         }
                         if (req.query['messageSent'] != undefined) {
                             queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUID_Arr => {
                                 let MSUID = MSUID_Arr[0].MSUID;
                                 let msgObj = req.body;
-                                queryDB(`INSERT INTO ${MSUID}(type, liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID) VALUES('${msgObj.type}', ${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${v4()}${v4()}')`).then(resx => {
+                                queryDB(`INSERT INTO ${MSUID}(liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID) VALUES(${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${v4()}${v4()}')`).then(resx => {
                                     res.json({ status: 'Sent' });
                                 }).catch(e => sendErrorResponse(res, e, 'MSG-2'));
                             }).catch(e => sendErrorResponse(res, e, 'MSG-0'));
