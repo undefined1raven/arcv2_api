@@ -84,7 +84,7 @@ function handler(req, res) {
                 if (data != undefined && data.ip == req.body.CIP) {
                     bcrypt.compare(`${req.body.AT}${process.env.AT_SALT}${req.body.CIP}`, data.hash).then(result => {
                         if (result) {
-                            res.json({ status: 'Validation Successful', flag: true, PKGetter: `${data.said.split('-')[0]}-${data.said.split('-')[4]}`, username: data.username });
+                            res.json({ status: 'Validation Successful', flag: true, PKGetter: `${data.said.split('-')[0]}-${data.said.split('-')[4]}`, ownUID: data.said, username: data.username });
                         } else {
                             res.json({ status: 'Validation Failed [X9]', redirect: '/login' });
                         }
