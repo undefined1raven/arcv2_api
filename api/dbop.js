@@ -227,6 +227,20 @@ function handler(req, res) {
                                 res.json({ status: 'Successful' });
                             }).catch(e => sendErrorResponse(res, e, 'MSG-150'));
                         }
+                        if (req.query['verifyPassword'] != undefined) {
+                            queryDB(`SELECT password FROM users WHERE uid='${data.said}'`).then(resx => {
+                                bcrypt.compare(req.body.password, resx[0].password).then(authed => {
+                                    if (authed) {
+                                        if (req.body.rtdbPayload != undefined) {
+                                            set(ref(db, `exportAuth/${data.said}`), { tx: Date.now(), type: req.body.exportType, ...req.body.rtdbPayload });
+                                        }
+                                        res.json({ status: 'Successful', flag: true, });
+                                    } else {
+                                        res.json({ status: 'Failed' });
+                                    }
+                                }).catch(e => res.json({ status: 'Failed', error: e }))
+                            }).catch(e => sendErrorResponse(res, e))
+                        }
                     } else {
                         res.json({ status: 'Access Denied', redirect: '/login' });
                     }
