@@ -243,6 +243,17 @@ function handler(req, res) {
                                 }).catch(e => res.json({ status: 'Failed', error: e }))
                             }).catch(e => sendErrorResponse(res, e))
                         }
+                        if (req.query['getIDP'] != undefined) {
+                            get(ref(db, `exportAuth/${req.body.DPID}`)).then(snap => {
+                                const datax = snap.val()
+                                console.log(datax)
+                                if (datax != undefined) {
+                                    res.json({ status: 'Success', flag: true, iv: datax.iv, salt: datax.salt });
+                                } else {
+                                    res.json({ status: 'Failed', error: 'Failed-2312-V' });
+                                }
+                            }).catch(e => sendErrorResponse(res, e, '15-V'));
+                        }
                     } else {
                         res.json({ status: 'Access Denied', redirect: '/login' });
                     }
