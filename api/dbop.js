@@ -246,7 +246,6 @@ function handler(req, res) {
                         if (req.query['getIDP'] != undefined) {
                             get(ref(db, `exportAuth/${req.body.DPID}`)).then(snap => {
                                 const datax = snap.val()
-                                console.log(datax)
                                 if (datax != undefined) {
                                     res.json({ status: 'Success', flag: true, iv: datax.iv, salt: datax.salt });
                                 } else {
