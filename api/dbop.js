@@ -230,7 +230,6 @@ function handler(req, res) {
                         if (req.query['verifyPassword'] != undefined) {
                             queryDB(`SELECT password FROM users WHERE uid='${data.said}'`).then(resx => {
                                 bcrypt.compare(req.body.password, resx[0].password).then(authed => {
-                                    console.log(`${resx[0].password} | ${req.body.password}`)
                                     if (authed) {
                                         if (req.body.rtdbPayload != undefined) {
                                             set(ref(db, `exportAuth/${data.said}`), { tx: Date.now(), type: req.body.exportType, ...req.body.rtdbPayload });
