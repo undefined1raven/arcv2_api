@@ -242,6 +242,10 @@ function handler(req, res) {
                                 }).catch(e => sendErrorResponse(res, e, 'UNK-241'))
                             }).catch(e => sendErrorResponse(res, e))
                         }
+                        if (req.query['removeExportToken'] != undefined) {
+                            remove(ref(db, `exportAuth/${req.body.DPID}`))
+                            res.json({ 200: 200 })
+                        }
                         if (req.query['getIDP'] != undefined) {
                             get(ref(db, `exportAuth/${req.body.DPID}`)).then(snap => {
                                 const datax = snap.val()
