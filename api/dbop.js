@@ -231,16 +231,15 @@ function handler(req, res) {
                             queryDB(`SELECT password FROM users WHERE uid='${data.said}'`).then(resx => {
                                 bcrypt.compare(req.body.password, resx[0].password).then(authed => {
                                     if (authed) {
-                                        if (req.body.rtdbPayload != undefined) {
-                                            set(ref(db, `exportAuth/${data.said}`), { tx: Date.now(), type: req.body.exportType, ...req.body.rtdbPayload });
-                                        } else {
-                                            set(ref(db, `exportAuth/${data.said}`), { tx: Date.now(), type: req.body.exportType });
+                                        let isExport = req.body.authShareType.toString().split('.')[1] == 'export';
+                                        if (req.body.rtdbPayload != undefined && isExport) {
+                                            set(ref(db, `exportAuth/${data.said}`), { tx: Date.now(), authShareType: req.body.authShareType, ...req.body.rtdbPayload });
                                         }
                                         res.json({ status: 'Successful', flag: true, });
                                     } else {
                                         res.json({ status: 'Failed' });
                                     }
-                                }).catch(e => res.json({ status: 'Failed', error: e }))
+                                }).catch(e => sendErrorResponse(res, e, 'UNK-241'))
                             }).catch(e => sendErrorResponse(res, e))
                         }
                         if (req.query['getIDP'] != undefined) {
