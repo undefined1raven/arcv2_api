@@ -123,8 +123,8 @@ function handler(req, res) {
                         }
                         if (req.query['getPubilcKey'] != undefined) {
                             if (req.body.uid == 'self') {
-                                queryDB(`SELECT publicKey FROM users WHERE uid='${data.said}'`).then(publicKeyArr => {
-                                    res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey });
+                                queryDB(`SELECT publicKey, publicSigningKey FROM users WHERE uid='${data.said}'`).then(publicKeyArr => {
+                                    res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey, publicSigningKey: publicKeyArr[0].publicSigningKey });
                                 }).catch(e => { sendErrorResponse(res, e) });
                             } else {
                                 queryDB(`SELECT publicKey, publicSigningKey FROM users WHERE uid='${req.body.uid}'`).then(publicKeyArr => {
