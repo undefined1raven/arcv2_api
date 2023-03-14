@@ -95,7 +95,7 @@ function handler(req, res) {
                     }
                     queryDB(`SELECT email FROM users WHERE email='${req.body.email}'`).then(resx => {
                         if (resx.length == 0) {
-                            connection.query('INSERT INTO users SET ?', accountData, (err, resxq, fields) => { });
+                            connection.query('INSERT INTO users SET ?', { ...accountData, tx: `${Date.now()}` }, (err, resxq, fields) => { });
                             let nuidFragments = nuid.split('-');
                             let MSName = `MS${nuidFragments[0]}${nuidFragments[1]}${nuidFragments[2]}${nuidFragments[3]}${nuidFragments[4]}`;
                             queryDB(`CREATE TABLE ${MSName}(liked BOOLEAN, tx varchar(150), seen BOOLEAN, auth BOOLEAN, ownContent text, remoteContent text, targetUID varchar(80), MID varchar(80), originUID varchar(80))`).then(resx => {
@@ -144,8 +144,8 @@ function handler(req, res) {
                                 let PUBKEYJSON0 = JSON.parse(pubkeyArr[0].publicKey)
                                 let PUBKEYJSON1 = JSON.parse(pubkeyArr[1].publicKey)
                                 let PKSH = `${PUBKEYJSON0.n.toString().substring(0, 5)}.${PUBKEYJSON1.n.toString().substring(0, 5)}`;
-                                queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID, PKSH) VALUES('${data.said}', '${req.body.remoteUID}', 'Pending.TX', '${messagePermaStorageTableName}', '${PKSH}')`).then(() => {
-                                    queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID, PKSH) VALUES('${req.body.remoteUID}', '${data.said}', 'Pending.RX', '${messagePermaStorageTableName}', '${PKSH}')`).then(() => { });
+                                queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID, PKSH, tx, lastTX) VALUES('${data.said}', '${req.body.remoteUID}', 'Pending.TX', '${messagePermaStorageTableName}', '${PKSH}', '${Date.now()}', '${Date.now()}')`).then(() => {
+                                    queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID, PKSH, tx, lastTX) VALUES('${req.body.remoteUID}', '${data.said}', 'Pending.RX', '${messagePermaStorageTableName}', '${PKSH}', '${Date.now()}', '${Date.now()}')`).then(() => { });
                                     res.json({ status: 'Successful' });
                                 }).catch(e => { sendErrorResponse(res, e) });
                             }).catch(e => { sendErrorResponse(res, e) });
