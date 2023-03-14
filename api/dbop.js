@@ -206,7 +206,7 @@ function handler(req, res) {
                             queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUIDArr => {
                                 let MSUID = MSUIDArr[0].MSUID;
                                 let selectColumnsArr = 'liked, tx, seen, auth, ownContent, remoteContent, MID, targetUID';
-                                queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${req.body.targetUID}' AND originUID='${data.said}') OR (targetUID='${data.said}' AND originUID='${req.body.target}') ORDER BY tx DESC LIMIT ${req.body.count}`).then(resx => {
+                                queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') ORDER BY tx DESC LIMIT ${req.body.count}`).then(resx => {
                                     let typedMsgArr = []
                                     for (let ix = 0; ix < resx.length; ix++) {
                                         if (resx[ix].targetUID == data.said) {
