@@ -235,10 +235,14 @@ function handler(req, res) {
                         }
                         if (req.query['deleteMessage'] != undefined) {
                             queryDB(`SELECT originUID, targetUID FROM ${req.body.MSUID} WHERE MID='${req.body.MID}'`).then(resx => {
-                                if (resx[0].originUID == data.said) {
-                                    queryDB(`DELETE FROM ${req.body.MSUID} WHERE MID='${req.body.MID}'`).then(resx => {
-                                        res.json({ status: 'Successful' });
-                                    }).catch(e => sendErrorResponse(res, e, 'DEL-F15'));
+                                if (resx.length > 0) {
+                                    if (resx[0].originUID == data.said) {
+                                        queryDB(`DELETE FROM ${req.body.MSUID} WHERE MID='${req.body.MID}'`).then(resx => {
+                                            res.json({ status: 'Successful' });
+                                        }).catch(e => sendErrorResponse(res, e, 'DEL-F15'));
+                                    }
+                                } else {
+                                    res.json({ status: 404 })
                                 }
                             })
                         }
