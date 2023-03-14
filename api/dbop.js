@@ -233,6 +233,15 @@ function handler(req, res) {
                                 res.json({ status: 'Successful' });
                             }).catch(e => sendErrorResponse(res, e, 'MSG-150'));
                         }
+                        if (req.query['deleteMessage'] != undefined) {
+                            queryDB(`SELECT originUID, targetUID FROM ${req.body.MSUID} WHERE MID='${req.body.MID}'`).then(resx => {
+                                if (resx[0].originUID == data.said) {
+                                    queryDB(`DELETE FROM ${req.body.MSUID} WHERE MID='${req.body.MID}'`).then(resx => {
+                                        res.json({ status: 'Successful' });
+                                    }).catch(e => sendErrorResponse(res, e, 'DEL-F15'));
+                                }
+                            })
+                        }
                         if (req.query['verifyPassword'] != undefined) {
                             queryDB(`SELECT password FROM users WHERE uid='${data.said}'`).then(resx => {
                                 bcrypt.compare(req.body.password, resx[0].password).then(authed => {
