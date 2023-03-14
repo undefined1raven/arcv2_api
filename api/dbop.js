@@ -90,14 +90,15 @@ function handler(req, res) {
                         password: hash,
                         email: req.body.email,
                         mfa_token: JSON.stringify(mfa_mgr.generateSecret({ length: 40 })),
-                        publicKey: req.body.PUBKEY
+                        publicKey: req.body.PUBKEY,
+                        publicSigningKey: req.body.PUBSIGN
                     }
                     queryDB(`SELECT email FROM users WHERE email='${req.body.email}'`).then(resx => {
                         if (resx.length == 0) {
                             connection.query('INSERT INTO users SET ?', accountData, (err, resxq, fields) => { });
                             let nuidFragments = nuid.split('-');
                             let MSName = `MS${nuidFragments[0]}${nuidFragments[1]}${nuidFragments[2]}${nuidFragments[3]}${nuidFragments[4]}`;
-                            queryDB(`CREATE TABLE ${MSName}(liked BOOLEAN, tx varchar(150), seen BOOLEAN, auth BOOLEAN, ownContent text, remoteContent text, targetUID varchar(80), MID varchar(80))`).then(resx => {
+                            queryDB(`CREATE TABLE ${MSName}(liked BOOLEAN, tx varchar(150), seen BOOLEAN, auth BOOLEAN, ownContent text, remoteContent text, targetUID varchar(80), MID varchar(80), originUID varchar(80))`).then(resx => {
                                 res.json({ status: 'Success' });
                             }).catch(e => sendErrorResponse(res, e, 'X-MS-UID'));
                         } else {
@@ -139,9 +140,14 @@ function handler(req, res) {
                         if (req.query['addNewContact'] != undefined) {
                             let uidFragments = data.said.split('-');
                             let messagePermaStorageTableName = `MS${uidFragments[0]}${uidFragments[1]}${uidFragments[2]}${uidFragments[3]}${uidFragments[4]}`;
-                            queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID) VALUES('${data.said}', '${req.body.remoteUID}', 'Pending.TX', '${messagePermaStorageTableName}')`).then(() => {
-                                queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID) VALUES('${req.body.remoteUID}', '${data.said}', 'Pending.RX', '${messagePermaStorageTableName}')`).then(() => { });
-                                res.json({ status: 'Successful' });
+                            queryDB(`SELECT publicKey, uid FROM users WHERE UID='${data.said}' OR UID='${req.body.remoteUID}'`).then(pubkeyArr => {
+                                let PUBKEYJSON0 = JSON.parse(pubkeyArr[0].publicKey)
+                                let PUBKEYJSON1 = JSON.parse(pubkeyArr[1].publicKey)
+                                let PKSH = `${PUBKEYJSON0.n.toString().substring(0, 5)}.${PUBKEYJSON1.n.toString().substring(0, 5)}`;
+                                queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID, PKSH) VALUES('${data.said}', '${req.body.remoteUID}', 'Pending.TX', '${messagePermaStorageTableName}', '${PKSH}')`).then(() => {
+                                    queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID, PKSH) VALUES('${req.body.remoteUID}', '${data.said}', 'Pending.RX', '${messagePermaStorageTableName}', '${PKSH}')`).then(() => { });
+                                    res.json({ status: 'Successful' });
+                                }).catch(e => { sendErrorResponse(res, e) });
                             }).catch(e => { sendErrorResponse(res, e) });
                         }
                         if (req.query['getRequests'] != undefined) {
@@ -200,7 +206,7 @@ function handler(req, res) {
                             queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUIDArr => {
                                 let MSUID = MSUIDArr[0].MSUID;
                                 let selectColumnsArr = 'liked, tx, seen, auth, ownContent, remoteContent, MID, targetUID';
-                                queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE targetUID='${req.body.targetUID}' OR targetUID='${data.said}' ORDER BY tx DESC LIMIT ${req.body.count}`).then(resx => {
+                                queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${req.body.targetUID}' AND originUID='${data.said}') OR (targetUID='${data.said}' AND originUID='${req.body.target}') ORDER BY tx DESC LIMIT ${req.body.count}`).then(resx => {
                                     let typedMsgArr = []
                                     for (let ix = 0; ix < resx.length; ix++) {
                                         if (resx[ix].targetUID == data.said) {
@@ -217,7 +223,7 @@ function handler(req, res) {
                             queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUID_Arr => {
                                 let MSUID = MSUID_Arr[0].MSUID;
                                 let msgObj = req.body;
-                                queryDB(`INSERT INTO ${MSUID}(liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID) VALUES(${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${msgObj.MID}')`).then(resx => {
+                                queryDB(`INSERT INTO ${MSUID}(liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID, originUID) VALUES(${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${msgObj.MID}', '${data.said}')`).then(resx => {
                                     res.json({ status: 'Sent' });
                                 }).catch(e => sendErrorResponse(res, e, 'MSG-2'));
                             }).catch(e => sendErrorResponse(res, e, 'MSG-0'));
