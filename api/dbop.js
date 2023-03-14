@@ -98,7 +98,7 @@ function handler(req, res) {
                             connection.query('INSERT INTO users SET ?', { ...accountData, tx: `${Date.now()}` }, (err, resxq, fields) => { });
                             let nuidFragments = nuid.split('-');
                             let MSName = `MS${nuidFragments[0]}${nuidFragments[1]}${nuidFragments[2]}${nuidFragments[3]}${nuidFragments[4]}`;
-                            queryDB(`CREATE TABLE ${MSName}(liked BOOLEAN, tx varchar(150), seen BOOLEAN, auth BOOLEAN, ownContent text, remoteContent text, targetUID varchar(80), MID varchar(80), originUID varchar(80))`).then(resx => {
+                            queryDB(`CREATE TABLE ${MSName}(liked BOOLEAN, tx varchar(150), seen BOOLEAN, auth BOOLEAN, ownContent text, remoteContent text, targetUID varchar(80), MID varchar(80), originUID varchar(80), signature varchar(200))`).then(resx => {
                                 res.json({ status: 'Success' });
                             }).catch(e => sendErrorResponse(res, e, 'X-MS-UID'));
                         } else {
@@ -127,8 +127,8 @@ function handler(req, res) {
                                     res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey });
                                 }).catch(e => { sendErrorResponse(res, e) });
                             } else {
-                                queryDB(`SELECT publicKey FROM users WHERE uid='${req.body.uid}'`).then(publicKeyArr => {
-                                    res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey });
+                                queryDB(`SELECT publicKey, publicSigningKey FROM users WHERE uid='${req.body.uid}'`).then(publicKeyArr => {
+                                    res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey, publicSigningKey: publicKeyArr[0].publicSigningKey });
                                 }).catch(e => { sendErrorResponse(res, e) });
                             }
                         }
@@ -205,7 +205,7 @@ function handler(req, res) {
                         if (req.query['getMessages'] != undefined) {
                             queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUIDArr => {
                                 let MSUID = MSUIDArr[0].MSUID;
-                                let selectColumnsArr = 'liked, tx, seen, auth, ownContent, remoteContent, MID, targetUID';
+                                let selectColumnsArr = 'liked, tx, seen, auth, ownContent, remoteContent, MID, targetUID, signature';
                                 queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') ORDER BY tx DESC LIMIT ${req.body.count}`).then(resx => {
                                     let typedMsgArr = []
                                     for (let ix = 0; ix < resx.length; ix++) {
@@ -223,7 +223,7 @@ function handler(req, res) {
                             queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUID_Arr => {
                                 let MSUID = MSUID_Arr[0].MSUID;
                                 let msgObj = req.body;
-                                queryDB(`INSERT INTO ${MSUID}(liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID, originUID) VALUES(${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${msgObj.MID}', '${data.said}')`).then(resx => {
+                                queryDB(`INSERT INTO ${MSUID}(liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID, originUID, signature) VALUES(${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${msgObj.MID}', '${data.said}', '${msgObj.signature}')`).then(resx => {
                                     res.json({ status: 'Sent' });
                                 }).catch(e => sendErrorResponse(res, e, 'MSG-2'));
                             }).catch(e => sendErrorResponse(res, e, 'MSG-0'));
