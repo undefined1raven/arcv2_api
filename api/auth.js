@@ -65,7 +65,7 @@ function handler(req, res) {
                                     hash: secHash,
                                     username: user.username
                                 }).then(r => {
-                                    res.json({ status: 'Successful', redirect: '/', AT: ntid })
+                                    res.json({ status: 'Successful', redirect: '/', AT: ntid, PKGetter: `${user.uid.split('-')[0]}-${user.uid.split('-')[4]}` })
                                 }).catch(e => {
                                     res.json({ status: 'Auth Error', error: e })
                                 });

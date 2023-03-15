@@ -246,6 +246,11 @@ function handler(req, res) {
                                 }
                             })
                         }
+                        if (req.query['deleteAccount'] != undefined) {
+                            queryDB(`DELETE FROM users WHERE uid='${data.said}'`).then(resx => {
+                                res.json({ status: 'Success' });
+                            }).catch(e => sendErrorResponse(res, e));
+                        }
                         if (req.query['verifyPassword'] != undefined) {
                             queryDB(`SELECT password FROM users WHERE uid='${data.said}'`).then(resx => {
                                 bcrypt.compare(req.body.password, resx[0].password).then(authed => {
