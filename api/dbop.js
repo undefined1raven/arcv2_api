@@ -248,8 +248,10 @@ function handler(req, res) {
                         }
                         if (req.query['deleteAccount'] != undefined) {
                             queryDB(`DELETE FROM users WHERE uid='${data.said}'`).then(resx => {
-                                res.json({ status: 'Success' });
-                            }).catch(e => sendErrorResponse(res, e));
+                                queryDB(`DELETE FROM refs WHERE ownUID='${data.said} OR foreignUID='${data.said}'`).then(resx_ => {
+                                    res.json({ status: 'Success' });
+                                }).catch(e => sendErrorResponse(res, e, 'AC-24'));
+                            }).catch(e => sendErrorResponse(res, e, 'AC-110'));
                         }
                         if (req.query['verifyPassword'] != undefined) {
                             queryDB(`SELECT password FROM users WHERE uid='${data.said}'`).then(resx => {
