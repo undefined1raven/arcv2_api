@@ -127,6 +127,7 @@ function handler(req, res) {
                                     res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey, publicSigningKey: publicKeyArr[0].publicSigningKey });
                                 }).catch(e => { sendErrorResponse(res, e) });
                             } else {
+                                console.log(req.body.uid)
                                 queryDB(`SELECT publicKey, publicSigningKey FROM users WHERE uid='${req.body.uid}'`).then(publicKeyArr => {
                                     res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey, publicSigningKey: publicKeyArr[0].publicSigningKey });
                                 }).catch(e => { sendErrorResponse(res, e) });
@@ -248,7 +249,7 @@ function handler(req, res) {
                         }
                         if (req.query['deleteAccount'] != undefined) {
                             queryDB(`DELETE FROM users WHERE uid='${data.said}'`).then(resx => {
-                                queryDB(`DELETE FROM refs WHERE ownUID='${data.said} OR foreignUID='${data.said}'`).then(resx_ => {
+                                queryDB(`DELETE FROM refs WHERE ownUID='${data.said}' OR foreignUID='${data.said}'`).then(resx_ => {
                                     res.json({ status: 'Success' });
                                 }).catch(e => sendErrorResponse(res, e, 'AC-24'));
                             }).catch(e => sendErrorResponse(res, e, 'AC-110'));
