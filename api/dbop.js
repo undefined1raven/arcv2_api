@@ -66,7 +66,7 @@ function getRefsFromFUIDs(fUID_Arr, res, ownUID) {
             for (let ix = 0; ix < FUID_Names.length; ix++) {
                 refArr.push({ uid: approved_fUID_Arr[ix].foreignUID, name: FUID_Names[ix].username, msg: getRandomInt(0, 54), status: Math.random() < .5 ? 'Online' : 'Offline', since: '' });
             }
-            res.json({ status: 'Validation Successful', refs: refArr, ownUID: ownUID});
+            res.json({ status: 'Validation Successful', refs: refArr, ownUID: ownUID });
 
         }).catch(errx => console.log(errx))
     }
@@ -201,6 +201,11 @@ function handler(req, res) {
                                     res.json({ status: 'Successful' });
                                 }).catch(e => { sendErrorResponse(res, e) });
                             }
+                        }
+                        if (req.query['setLastSeenMessage'] != undefined) {
+                            queryDB(`UPDATE ${req.body.MSUID} SET seen='1' WHERE MID='${req.body.MID}'`).then(resx => {
+                                res.json({ status: 'Success' })
+                            }).catch(e => sendErrorResponse(res, e, 'UNSEEN-43'))
                         }
                         if (req.query['getMessages'] != undefined) {
                             queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUIDArr => {
