@@ -35,7 +35,7 @@ function sendErrorResponse(res, e, id) {
     res.json({ status: 'Failed', error: e, id: id != undefined ? id : 'Not Specified' });
 }
 
-function getRefsFromFUIDs(fUID_Arr, res) {
+function getRefsFromFUIDs(fUID_Arr, res, ownUID) {
     let FUIDs = '';
 
     let approved_fUID_Arr = fUID_Arr.filter(ref => ref.status == 'Approved');
@@ -54,7 +54,7 @@ function getRefsFromFUIDs(fUID_Arr, res) {
         }
     } else {
         if (approved_fUID_Arr.length == 0) {
-            res.json({ status: 'Validation Success', refs: [] });
+            res.json({ status: 'Validation Success', refs: [], ownUID: ownUID });
         } else if (approved_fUID_Arr.length == 1) {
             FUIDs = `'${approved_fUID_Arr[0].foreignUID}'`
         }
@@ -66,7 +66,7 @@ function getRefsFromFUIDs(fUID_Arr, res) {
             for (let ix = 0; ix < FUID_Names.length; ix++) {
                 refArr.push({ uid: approved_fUID_Arr[ix].foreignUID, name: FUID_Names[ix].username, msg: getRandomInt(0, 54), status: Math.random() < .5 ? 'Online' : 'Offline', since: '' });
             }
-            res.json({ status: 'Validation Successful', refs: refArr });
+            res.json({ status: 'Validation Successful', refs: refArr, ownUID: ownUID});
 
         }).catch(errx => console.log(errx))
     }
@@ -115,7 +115,7 @@ function handler(req, res) {
                         if (req.query['getRefs'] != undefined) {
                             bcrypt.compare(`${req.body.AT}${process.env.AT_SALT}${req.body.CIP}`, data.hash).then(result => {
                                 if (result) {
-                                    queryDB(`SELECT foreignUID, status FROM refs WHERE ownUID="${data.said}"`).then(fUID_Arr => { getRefsFromFUIDs(fUID_Arr, res) }).catch(err => { console.log(err); })
+                                    queryDB(`SELECT foreignUID, status FROM refs WHERE ownUID="${data.said}"`).then(fUID_Arr => { getRefsFromFUIDs(fUID_Arr, res, data.said) }).catch(err => { console.log(err); })
                                 } else {
                                     res.json({ status: 'Access Denied [X9]', redirect: '/login' });
                                 }
@@ -127,7 +127,6 @@ function handler(req, res) {
                                     res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey, publicSigningKey: publicKeyArr[0].publicSigningKey });
                                 }).catch(e => { sendErrorResponse(res, e) });
                             } else {
-                                console.log(req.body.uid)
                                 queryDB(`SELECT publicKey, publicSigningKey FROM users WHERE uid='${req.body.uid}'`).then(publicKeyArr => {
                                     res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey, publicSigningKey: publicKeyArr[0].publicSigningKey });
                                 }).catch(e => { sendErrorResponse(res, e) });
