@@ -172,10 +172,10 @@ function handler(req, res) {
                             queryDB(`SELECT publicKey, uid, username FROM users WHERE UID='${data.said}' OR UID='${req.body.remoteUID}'`).then(pubkeyArr => {
                                 let PUBKEYJSON0 = JSON.parse(pubkeyArr[0].publicKey)
                                 let PUBKEYJSON1 = JSON.parse(pubkeyArr[1].publicKey)
-                                let remoteUsername = ''
+                                let ownUsername = ''
                                 for (let ix = 0; ix < pubkeyArr.length; ix++) {
-                                    if (pubkeyArr[ix].uid == req.body.remoteUID) {
-                                        remoteUsername = pubkeyArr[ix].username;
+                                    if (pubkeyArr[ix].uid == data.said) {
+                                        ownUsername = pubkeyArr[ix].username;
                                     }
                                 }
                                 let PKSH = `${PUBKEYJSON0.n.toString().substring(0, 5)}.${PUBKEYJSON1.n.toString().substring(0, 5)}`;
@@ -185,7 +185,7 @@ function handler(req, res) {
                                         app_id: process.env.ONESIG_ID,
                                         title: { "en": "New Request" },
                                         web_buttons: [{ id: 'deny', text: 'Deny' }, { id: 'approve', text: 'Accept' }],
-                                        contents: { "en": `${remoteUsername} wants to connect` },
+                                        contents: { "en": `${ownUsername} wants to connect` },
                                         channel_for_external_user_ids: 'push',
                                         include_external_user_ids: [req.body.remoteUID],
                                         chrome_web_badge: "https://www.filepicker.io/api/file/proltSCwSWqb8QgZU0UD?filename=name.png",
