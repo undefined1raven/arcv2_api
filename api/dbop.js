@@ -188,6 +188,7 @@ function handler(req, res) {
                                         contents: { "en": `${ownUsername} wants to connect` },
                                         channel_for_external_user_ids: 'push',
                                         include_external_user_ids: [req.body.remoteUID],
+                                        priority: 10,
                                         chrome_web_badge: "https://www.filepicker.io/api/file/proltSCwSWqb8QgZU0UD?filename=name.png",
                                         icon: "https://www.filepicker.io/api/file/k8omnb4ySjCWXE0WQSw5?filename=name.png",
                                     };
@@ -278,8 +279,9 @@ function handler(req, res) {
                                         app_id: process.env.ONESIG_ID,
                                         title: { "en": "New Message" },
                                         web_buttons: [{ id: 'like', text: 'Like' }, { id: 'markAsSeen', text: 'Mark as seen' }],
-                                        contents: { "en": `New message from ${msgObj.username}` },
+                                        contents: { "en": `New message from ${data.username}` },
                                         channel_for_external_user_ids: 'push',
+                                        priority: 10,
                                         include_external_user_ids: [msgObj.targetUID],
                                         chrome_web_badge: "https://www.filepicker.io/api/file/proltSCwSWqb8QgZU0UD?filename=name.png",
                                         icon: "https://www.filepicker.io/api/file/k8omnb4ySjCWXE0WQSw5?filename=name.png",
