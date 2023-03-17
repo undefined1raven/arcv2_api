@@ -5,6 +5,7 @@ const mysql = require('mysql2')
 const connection = mysql.createConnection(process.env.DB_KEY)
 const mfa_mgr = require('speakeasy');
 const { getDatabase, get, once, increment, remove, query, limitToLast, update, push, set, ref, onValue } = require("firebase/database");
+var https = require('https');
 
 var admin = require("firebase-admin");
 var serviceAccount = JSON.parse(process.env.FIREBASE_SCA);
@@ -14,6 +15,34 @@ function getRandomInt(min, max) {
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min) + min); //max e | min i
 }
+
+var sendNotification = function (data, lres) {
+    var headers = {
+        "Content-Type": "application/json; charset=utf-8",
+        "Authorization": process.env.ONESIG
+    };
+
+    var options = {
+        host: "onesignal.com",
+        port: 443,
+        path: "/api/v1/notifications",
+        method: "POST",
+        headers: headers
+    };
+
+    var req = https.request(options, function (res) {
+        res.on('data', function (data) {
+            lres.json({ status: 'Success' })
+        });
+    });
+
+    req.on('error', function (e) {
+        lres.json({ status: 'Failed', error: e })
+    });
+
+    req.write(JSON.stringify(data));
+    req.end();
+};
 
 
 async function queryDB(queryStr) {
@@ -140,13 +169,29 @@ function handler(req, res) {
                         if (req.query['addNewContact'] != undefined) {
                             let uidFragments = data.said.split('-');
                             let messagePermaStorageTableName = `MS${uidFragments[0]}${uidFragments[1]}${uidFragments[2]}${uidFragments[3]}${uidFragments[4]}`;
-                            queryDB(`SELECT publicKey, uid FROM users WHERE UID='${data.said}' OR UID='${req.body.remoteUID}'`).then(pubkeyArr => {
+                            queryDB(`SELECT publicKey, uid, username FROM users WHERE UID='${data.said}' OR UID='${req.body.remoteUID}'`).then(pubkeyArr => {
                                 let PUBKEYJSON0 = JSON.parse(pubkeyArr[0].publicKey)
                                 let PUBKEYJSON1 = JSON.parse(pubkeyArr[1].publicKey)
+                                let remoteUsername = ''
+                                for (let ix = 0; ix < pubkeyArr.length; ix++) {
+                                    if (pubkeyArr[ix].uid == req.body.remoteUID) {
+                                        remoteUsername = pubkeyArr[ix].username;
+                                    }
+                                }
                                 let PKSH = `${PUBKEYJSON0.n.toString().substring(0, 5)}.${PUBKEYJSON1.n.toString().substring(0, 5)}`;
                                 queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID, PKSH, tx, lastTX) VALUES('${data.said}', '${req.body.remoteUID}', 'Pending.TX', '${messagePermaStorageTableName}', '${PKSH}', '${Date.now()}', '${Date.now()}')`).then(() => {
                                     queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID, PKSH, tx, lastTX) VALUES('${req.body.remoteUID}', '${data.said}', 'Pending.RX', '${messagePermaStorageTableName}', '${PKSH}', '${Date.now()}', '${Date.now()}')`).then(() => { });
-                                    res.json({ status: 'Successful' });
+                                    let notificationObj = {
+                                        app_id: process.env.ONESIG_ID,
+                                        title: { "en": "New Request" },
+                                        web_buttons: [{ id: 'deny', text: 'Deny' }, { id: 'approve', text: 'Accept' }],
+                                        contents: { "en": `${remoteUsername} wants to connect` },
+                                        channel_for_external_user_ids: 'push',
+                                        include_external_user_ids: [req.body.remoteUID],
+                                        chrome_web_badge: "https://www.filepicker.io/api/file/proltSCwSWqb8QgZU0UD?filename=name.png",
+                                        icon: "https://www.filepicker.io/api/file/k8omnb4ySjCWXE0WQSw5?filename=name.png",
+                                    };
+                                    sendNotification(notificationObj, res);
                                 }).catch(e => { sendErrorResponse(res, e) });
                             }).catch(e => { sendErrorResponse(res, e) });
                         }
@@ -229,7 +274,17 @@ function handler(req, res) {
                                 let MSUID = MSUID_Arr[0].MSUID;
                                 let msgObj = req.body;
                                 queryDB(`INSERT INTO ${MSUID}(liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID, originUID, signature) VALUES(${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${msgObj.MID}', '${data.said}', '${msgObj.signature}')`).then(resx => {
-                                    res.json({ status: 'Sent' });
+                                    let notificationObj = {
+                                        app_id: process.env.ONESIG_ID,
+                                        title: { "en": "New Message" },
+                                        web_buttons: [{ id: 'like', text: 'Like' }, { id: 'markAsSeen', text: 'Mark as seen' }],
+                                        contents: { "en": `New message from ${msgObj.username}` },
+                                        channel_for_external_user_ids: 'push',
+                                        include_external_user_ids: [msgObj.targetUID],
+                                        chrome_web_badge: "https://www.filepicker.io/api/file/proltSCwSWqb8QgZU0UD?filename=name.png",
+                                        icon: "https://www.filepicker.io/api/file/k8omnb4ySjCWXE0WQSw5?filename=name.png",
+                                    };
+                                    sendNotification(notificationObj, res);
                                 }).catch(e => sendErrorResponse(res, e, 'MSG-2'));
                             }).catch(e => sendErrorResponse(res, e, 'MSG-0'));
                         }
