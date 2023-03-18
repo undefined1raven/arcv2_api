@@ -93,7 +93,7 @@ function getRefsFromFUIDs(fUID_Arr, res, ownUID) {
         queryDB(`SELECT username FROM users WHERE uid IN (${FUIDs});`).then(FUID_Names => {
             let refArr = [];
             for (let ix = 0; ix < FUID_Names.length; ix++) {
-                refArr.push({ uid: approved_fUID_Arr[ix].foreignUID, name: FUID_Names[ix].username, msg: getRandomInt(0, 54), status: '▣', since: '' });
+                refArr.push({ uid: approved_fUID_Arr[ix].foreignUID, name: FUID_Names[ix].username, msg: -1, status: '▣', since: '' });
             }
             res.json({ status: 'Validation Successful', refs: refArr, ownUID: ownUID });
 
@@ -252,6 +252,35 @@ function handler(req, res) {
                             queryDB(`UPDATE ${req.body.MSUID} SET seen='1' WHERE MID='${req.body.MID}'`).then(resx => {
                                 res.json({ status: 'Success' })
                             }).catch(e => sendErrorResponse(res, e, 'UNSEEN-43'))
+                        }
+                        if (req.query['getNewMessagesCount'] != undefined) {
+                            queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUIDArr => {
+                                let MSUID = MSUIDArr[0].MSUID;
+                                let selectColumnsArr = 'targetUID, seen';
+                                queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') ORDER BY tx ASC LIMIT 30`).then(resx => {
+                                    let count = 0;
+                                    let seenFlag = { state: false, ix: 0 };
+                                    if (resx.length > 0) {
+                                        for (let ix = 0; ix < resx.length; ix++) {
+                                            if (resx[ix].seen == 1 && (!seenFlag.state || seenFlag.ix <= ix)) {
+                                                seenFlag = { state: true, ix: ix }
+                                            }
+                                        }
+                                        if (seenFlag.state && seenFlag.ix != resx.length - 1) {
+                                            for (let ix = seenFlag.ix; ix < resx.length - 1; ix++) {
+                                                count++;
+                                            }
+                                        } else if (seenFlag.ix == resx.length - 1) {
+                                            count = 0;
+                                        } else if (!seenFlag.state) {
+                                            count = resx.length;
+                                        }
+                                        res.json({ status: 'Success', count: count });
+                                    } else {
+                                        res.json({ status: 'Success', count: 0 });
+                                    }
+                                }).catch(e => sendErrorResponse(res, e, 'GMC-105'));;
+                            }).catch(e => sendErrorResponse(res, e, 'GMC-155'));
                         }
                         if (req.query['getMessages'] != undefined) {
                             queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUIDArr => {
