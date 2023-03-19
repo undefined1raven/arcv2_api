@@ -324,6 +324,27 @@ function handler(req, res) {
                                 res.json({ status: 'Successful' });
                             }).catch(e => sendErrorResponse(res, e, 'MSG-150'));
                         }
+                        if (req.query['changePassword'] != undefined) {
+                            if (!req.body.newPassword.toString().match(/^(.{0,7}|[^0-9]*|[^A-Z]*|[^a-z]*|[a-zA-Z0-9]*)$/)) {
+                                queryDB(`SELECT password FROM users WHERE uid='${data.said}'`).then(resx => {
+                                    bcrypt.compare(req.body.currentPassword, resx[0].password).then(match => {
+                                        if (match) {
+                                            bcrypt.hash(req.body.newPassword, 11).then(hash => {
+                                                queryDB(`UPDATE users SET password='${hash}' WHERE uid='${data.said}'`).then(() => {
+                                                    remove(ref(db, `authTokens/${req.body.AT}`)).then(() => {
+                                                        res.json({ status: 'Success', flag: true });
+                                                    });
+                                                }).catch(e => sendErrorResponse(res, e, 'DR-105'));
+                                            }).catch(e => sendErrorResponse(res, e, 'HS-532'))
+                                        } else {
+                                            res.json({ status: 'Failed', flag: false });
+                                        }
+                                    }).catch(e => sendErrorResponse(res, e, 'HM-89'));
+                                }).catch(e => sendErrorResponse(res, e, 'DR-192'));;
+                            } else {
+                                res.json({ status: 'Failed', flag: false });
+                            }
+                        }
                         if (req.query['deleteMessage'] != undefined) {
                             queryDB(`SELECT originUID, targetUID FROM ${req.body.MSUID} WHERE MID='${req.body.MID}'`).then(resx => {
                                 if (resx.length > 0) {
