@@ -258,9 +258,12 @@ function handler(req, res) {
                             for (let ixx = 0; ixx < req.body.refs.length; ixx++) {
                                 queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.refs[ixx].uid}'`).then(MSUIDArr => {
                                     let MSUID = MSUIDArr[0].MSUID;
-                                    let selectColumnsArr = 'targetUID, seen';
-                                    queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.refs[ixx].uid}') ORDER BY tx ASC LIMIT 10`).then(resx => {
-                                        let count = 0;
+                                    let selectColumnsArr = 'targetUID, seen, originUID, tx';
+                                    queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.refs[ixx].uid}') ORDER BY tx DESC LIMIT 10`).then(resx => {
+                                        var rawMsgArr = resx
+
+                                        rawMsgArr.sort((a, b) => { return parseInt(a.tx) - parseInt(b.tx) })
+
                                         let seenFlag = { state: false, ix: 0 };
                                         if (resx.length > 0) {
                                             for (let ix = 0; ix < resx.length; ix++) {
@@ -268,16 +271,15 @@ function handler(req, res) {
                                                     seenFlag = { state: true, ix: ix }
                                                 }
                                             }
-                                            if (seenFlag.state && seenFlag.ix != resx.length - 1) {
-                                                for (let ix = seenFlag.ix; ix < resx.length - 1; ix++) {
-                                                    count++;
+                                            if (seenFlag.state) {
+                                                if (seenFlag.state && seenFlag.ix != resx.length - 1) {
+                                                    messageCountsHash[req.body.refs[ixx].uid] = { msg: resx.length - (seenFlag.ix + 1) };
+                                                } else if (seenFlag.ix == resx.length - 1) {
+                                                    messageCountsHash[req.body.refs[ixx].uid] = { msg: 0 };
                                                 }
-                                            } else if (seenFlag.ix == resx.length - 1) {
-                                                count = 0;
-                                                messageCountsHash[req.body.refs[ixx].uid] = { msg: 0 };
-                                            } else if (!seenFlag.state) {
-                                                messageCountsHash[req.body.refs[ixx].uid] = { msg: count };
-                                                count = resx.length;
+
+                                            } else {
+                                                messageCountsHash[req.body.refs[ixx].uid] = { msg: resx.length };
                                             }
                                             if (ixx == req.body.refs.length - 1) {
                                                 res.json({ status: 'Success', messageCountsHash: messageCountsHash });
@@ -288,7 +290,7 @@ function handler(req, res) {
                                                 res.json({ status: 'Success', messageCountsHash: { messageCountsHash } });
                                             }
                                         }
-                                    }).catch(e => sendErrorResponse(res, e, 'GMC-105'));;
+                                    })//.catch(e => sendErrorResponse(res, e, 'GMC-105'));;
                                 }).catch(e => sendErrorResponse(res, e, 'GMC-155'));
                             }
                         }
