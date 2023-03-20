@@ -16,7 +16,7 @@ function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min) + min); //max e | min i
 }
 
-var sendNotification = function (data, lres) {
+var sendNotification = function (data, lres, sendRes) {
     var headers = {
         "Content-Type": "application/json; charset=utf-8",
         "Authorization": process.env.ONESIG
@@ -32,7 +32,9 @@ var sendNotification = function (data, lres) {
 
     var req = https.request(options, function (res) {
         res.on('data', function (data) {
-            lres.json({ status: 'Success' })
+            if (sendRes) {
+                lres.json({ status: 'Success' })
+            }
         });
     });
 
@@ -192,7 +194,8 @@ function handler(req, res) {
                                         chrome_web_badge: "https://www.filepicker.io/api/file/proltSCwSWqb8QgZU0UD?filename=name.png",
                                         icon: "https://www.filepicker.io/api/file/k8omnb4ySjCWXE0WQSw5?filename=name.png",
                                     };
-                                    sendNotification(notificationObj, res);
+                                    sendNotification({ ...notificationObj, app_id: process.env.LOCAL_ONESIG_ID }, res, false);
+                                    sendNotification({ ...notificationObj, app_id: process.env.ONESIG_ID }, res, true);
                                 }).catch(e => { sendErrorResponse(res, e) });
                             }).catch(e => { sendErrorResponse(res, e) });
                         }
@@ -327,7 +330,8 @@ function handler(req, res) {
                                         chrome_web_badge: "https://www.filepicker.io/api/file/proltSCwSWqb8QgZU0UD?filename=name.png",
                                         icon: "https://www.filepicker.io/api/file/k8omnb4ySjCWXE0WQSw5?filename=name.png",
                                     };
-                                    sendNotification(notificationObj, res);
+                                    sendNotification({ ...notificationObj, app_id: process.env.LOCAL_ONESIG_ID }, res, false);
+                                    sendNotification({ ...notificationObj, app_id: process.env.ONESIG_ID }, res, true);
                                 }).catch(e => sendErrorResponse(res, e, 'MSG-2'));
                             }).catch(e => sendErrorResponse(res, e, 'MSG-0'));
                         }
