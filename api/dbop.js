@@ -338,25 +338,40 @@ function handler(req, res) {
                                 res.json({ status: 'Successful' });
                             }).catch(e => sendErrorResponse(res, e, 'MSG-150'));
                         }
-                        if (req.query['changePassword'] != undefined) {
-                            if (!req.body.newPassword.toString().match(/^(.{0,7}|[^0-9]*|[^A-Z]*|[^a-z]*|[a-zA-Z0-9]*)$/)) {
+                        if (req.query['changePassword'] != undefined || req.query['changeUsername'] != undefined) {
+                            let changePasswordMode = -1;
+                            if (req.query['changePassword'] != undefined && req.query['changeUsername'] == undefined && req.body.newPassword != undefined && !req.body.newPassword.toString().match(/^(.{0,7}|[^0-9]*|[^A-Z]*|[^a-z]*|[a-zA-Z0-9]*)$/)) {
+                                changePasswordMode = true;
+                            }
+                            if (req.query['changePassword'] == undefined && req.query['changeUsername'] != undefined && req.body.newUsername != undefined && req.body.newUsername.length > 2) {
+                                changePasswordMode = false;
+                            }
+                            if (changePasswordMode == -1) {
+                                res.json({ status: 'Error', id: 'REQMLF' });
+                            } else {
                                 queryDB(`SELECT password FROM users WHERE uid='${data.said}'`).then(resx => {
                                     bcrypt.compare(req.body.currentPassword, resx[0].password).then(match => {
                                         if (match) {
-                                            bcrypt.hash(req.body.newPassword, 11).then(hash => {
-                                                queryDB(`UPDATE users SET password='${hash}' WHERE uid='${data.said}'`).then(() => {
-                                                    remove(ref(db, `authTokens/${req.body.AT}`)).then(() => {
+                                            if (changePasswordMode == true) {
+                                                bcrypt.hash(req.body.newPassword, 11).then(hash => {
+                                                    queryDB(`UPDATE users SET password='${hash}' WHERE uid='${data.said}'`).then(() => {
+                                                        remove(ref(db, `authTokens/${req.body.AT}`)).then(() => {
+                                                            res.json({ status: 'Success', flag: true });
+                                                        });
+                                                    }).catch(e => sendErrorResponse(res, e, 'DR-105'));
+                                                }).catch(e => sendErrorResponse(res, e, 'HS-532'))
+                                            } else if (changePasswordMode == false) {
+                                                queryDB(`UPDATE users SET username='${req.body.newUsername.toString()}' WHERE uid='${data.said}'`).then(() => {
+                                                    update(ref(db, `authTokens/${req.body.AT}`), { username: req.body.newUsername.toString() }).then(() => {
                                                         res.json({ status: 'Success', flag: true });
                                                     });
-                                                }).catch(e => sendErrorResponse(res, e, 'DR-105'));
-                                            }).catch(e => sendErrorResponse(res, e, 'HS-532'))
+                                                }).catch(e => sendErrorResponse(res, e, 'DR-142'));
+                                            }
                                         } else {
                                             res.json({ status: 'Failed', flag: false });
                                         }
                                     }).catch(e => sendErrorResponse(res, e, 'HM-89'));
                                 }).catch(e => sendErrorResponse(res, e, 'DR-192'));;
-                            } else {
-                                res.json({ status: 'Failed', flag: false });
                             }
                         }
                         if (req.query['deleteMessage'] != undefined) {
