@@ -194,8 +194,7 @@ function handler(req, res) {
                                         chrome_web_badge: "https://www.filepicker.io/api/file/proltSCwSWqb8QgZU0UD?filename=name.png",
                                         icon: "https://www.filepicker.io/api/file/k8omnb4ySjCWXE0WQSw5?filename=name.png",
                                     };
-                                    sendNotification({ ...notificationObj, app_id: process.env.LOCAL_ONESIG_ID }, res, false);
-                                    sendNotification({ ...notificationObj, app_id: process.env.ONESIG_ID }, res, true);
+                                    sendNotification(notificationObj, res, true);
                                 }).catch(e => { sendErrorResponse(res, e) });
                             }).catch(e => { sendErrorResponse(res, e) });
                         }
@@ -330,8 +329,7 @@ function handler(req, res) {
                                         chrome_web_badge: "https://www.filepicker.io/api/file/proltSCwSWqb8QgZU0UD?filename=name.png",
                                         icon: "https://www.filepicker.io/api/file/k8omnb4ySjCWXE0WQSw5?filename=name.png",
                                     };
-                                    sendNotification({ ...notificationObj, app_id: process.env.LOCAL_ONESIG_ID }, res, false);
-                                    sendNotification({ ...notificationObj, app_id: process.env.ONESIG_ID }, res, true);
+                                    sendNotification(notificationObj, res, true);
                                 }).catch(e => sendErrorResponse(res, e, 'MSG-2'));
                             }).catch(e => sendErrorResponse(res, e, 'MSG-0'));
                         }
