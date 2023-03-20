@@ -95,7 +95,7 @@ function getRefsFromFUIDs(fUID_Arr, res, ownUID) {
         queryDB(`SELECT username FROM users WHERE uid IN (${FUIDs});`).then(FUID_Names => {
             let refArr = [];
             for (let ix = 0; ix < FUID_Names.length; ix++) {
-                refArr.push({ uid: approved_fUID_Arr[ix].foreignUID, name: FUID_Names[ix].username, msg: -1, status: '▣', since: '' });
+                refArr.push({ uid: approved_fUID_Arr[ix].foreignUID, name: FUID_Names[ix].username, msg: -1, status: '▣', since: '', tx: Date.now() });
             }
             res.json({ status: 'Validation Successful', refs: refArr, ownUID: ownUID });
 
@@ -345,6 +345,7 @@ function handler(req, res) {
                             }
                             if (req.query['changePassword'] == undefined && req.query['changeUsername'] != undefined && req.body.newUsername != undefined && req.body.newUsername.length > 2) {
                                 changePasswordMode = false;
+                                queryDB(``)
                             }
                             if (changePasswordMode == -1) {
                                 res.json({ status: 'Error', id: 'REQMLF' });
