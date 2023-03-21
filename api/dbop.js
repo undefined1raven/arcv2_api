@@ -297,8 +297,9 @@ function handler(req, res) {
                             }
                         }
                         if (req.query['getMessages'] != undefined) {
-                            queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUIDArr => {
+                            queryDB(`SELECT MSUID, PKSH FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUIDArr => {
                                 let MSUID = MSUIDArr[0].MSUID;
+                                let PKSH = MSUIDArr[0].PKSH;
                                 let selectColumnsArr = 'liked, tx, seen, auth, ownContent, remoteContent, MID, targetUID, signature';
                                 queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') ORDER BY tx DESC LIMIT ${req.body.count}`).then(resx => {
                                     let typedMsgArr = []
@@ -309,7 +310,7 @@ function handler(req, res) {
                                             typedMsgArr.push({ ...resx[ix], type: 'tx' });
                                         }
                                     }
-                                    res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID });
+                                    res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH });
                                 }).catch(e => sendErrorResponse(res, e));
                             }).catch(e => sendErrorResponse(res, e))
                         }
