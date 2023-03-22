@@ -301,17 +301,60 @@ function handler(req, res) {
                                 let MSUID = MSUIDArr[0].MSUID;
                                 let PKSH = MSUIDArr[0].PKSH;
                                 let selectColumnsArr = 'liked, tx, seen, auth, ownContent, remoteContent, MID, targetUID, signature';
-                                queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') ORDER BY tx DESC LIMIT ${req.body.count}`).then(resx => {
-                                    let typedMsgArr = []
-                                    for (let ix = 0; ix < resx.length; ix++) {
-                                        if (resx[ix].targetUID == data.said) {
-                                            typedMsgArr.push({ ...resx[ix], type: 'rx' });
+                                queryDB(`SELECT COUNT(*) FROM ${MSUID}`).then(countx => {
+                                    var count = countx[0]['count(*)']
+                                    if (req.body.offset) {
+                                        const offset = count - req.body.offset;
+                                        if (offset >= 0) {
+                                            queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') ORDER BY tx ASC LIMIT ${offset}, ${30}`).then(resx => {
+                                                let typedMsgArr = []
+                                                for (let ix = 0; ix < resx.length; ix++) {
+                                                    if (resx[ix].targetUID == data.said) {
+                                                        typedMsgArr.push({ ...resx[ix], type: 'rx' });
+                                                    } else {
+                                                        typedMsgArr.push({ ...resx[ix], type: 'tx' });
+                                                    }
+                                                }
+                                                res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, prepend: true });
+                                            });
                                         } else {
-                                            typedMsgArr.push({ ...resx[ix], type: 'tx' });
+                                            let countunderflow = offset * -1;
+                                            let fetchCount = count % 30;//if more messages are requested than the db has, return the first chunk of messages since conversation start has been reached 
+                                            if (countunderflow <= 30) {
+                                                queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') ORDER BY tx ASC LIMIT ${0}, ${fetchCount}`).then(resx => {
+                                                    let typedMsgArr = []
+                                                    for (let ix = 0; ix < resx.length; ix++) {
+                                                        if (resx[ix].targetUID == data.said) {
+                                                            typedMsgArr.push({ ...resx[ix], type: 'rx' });
+                                                        } else {
+                                                            typedMsgArr.push({ ...resx[ix], type: 'tx' });
+                                                        }
+                                                    }
+                                                    res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, start: true });
+                                                });
+                                            } else {
+                                                res.json({ status: 'Successful', messages: [], MSUID: MSUID, PKSH: PKSH, start: true });
+                                            }
                                         }
+                                    } else {
+                                        queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') ORDER BY tx DESC LIMIT ${30}`).then(resx => {
+                                            let typedMsgArr = []
+                                            for (let ix = 0; ix < resx.length; ix++) {
+                                                if (resx[ix].targetUID == data.said) {
+                                                    typedMsgArr.push({ ...resx[ix], type: 'rx' });
+                                                } else {
+                                                    typedMsgArr.push({ ...resx[ix], type: 'tx' });
+                                                }
+                                            }
+
+                                            if (typedMsgArr.length < 30) {
+                                                res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, start: true });
+                                            } else {
+                                                res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH });
+                                            }
+                                        }).catch(e => sendErrorResponse(res, e));
                                     }
-                                    res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH });
-                                }).catch(e => sendErrorResponse(res, e));
+                                })
                             }).catch(e => sendErrorResponse(res, e))
                         }
                         if (req.query['messageSent'] != undefined) {
