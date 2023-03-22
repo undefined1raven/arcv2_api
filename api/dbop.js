@@ -171,13 +171,16 @@ function handler(req, res) {
                         if (req.query['addNewContact'] != undefined) {
                             let uidFragments = data.said.split('-');
                             let messagePermaStorageTableName = `MS${uidFragments[0]}${uidFragments[1]}${uidFragments[2]}${uidFragments[3]}${uidFragments[4]}`;
-                            queryDB(`SELECT publicKey, uid, username FROM users WHERE UID='${data.said}' OR UID='${req.body.remoteUID}'`).then(pubkeyArr => {
+                            queryDB(`SELECT notificationsConfig, publicKey, uid, username FROM users WHERE UID='${data.said}' OR UID='${req.body.remoteUID}'`).then(pubkeyArr => {
                                 let PUBKEYJSON0 = JSON.parse(pubkeyArr[0].publicKey)
                                 let PUBKEYJSON1 = JSON.parse(pubkeyArr[1].publicKey)
+                                let notificationsConfig = 0;
                                 let ownUsername = ''
                                 for (let ix = 0; ix < pubkeyArr.length; ix++) {
                                     if (pubkeyArr[ix].uid == data.said) {
                                         ownUsername = pubkeyArr[ix].username;
+                                    } else {
+                                        notificationsConfig = JSON.parse(pubkeyArr[ix].notificationsConfig);
                                     }
                                 }
                                 let PKSH = `${PUBKEYJSON0.n.toString().substring(0, 5)}.${PUBKEYJSON1.n.toString().substring(0, 5)}`;
@@ -194,7 +197,11 @@ function handler(req, res) {
                                         chrome_web_badge: "https://www.filepicker.io/api/file/proltSCwSWqb8QgZU0UD?filename=name.png",
                                         icon: "https://www.filepicker.io/api/file/k8omnb4ySjCWXE0WQSw5?filename=name.png",
                                     };
-                                    sendNotification(notificationObj, res, true);
+                                    if (notificationsConfig != 0) {
+                                        if (notificationsConfig.newContacts == true) {
+                                            sendNotification(notificationObj, res, true);
+                                        }
+                                    }
                                 }).catch(e => { sendErrorResponse(res, e) });
                             }).catch(e => { sendErrorResponse(res, e) });
                         }
@@ -316,7 +323,7 @@ function handler(req, res) {
                                                     }
                                                 }
                                                 res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, prepend: true });
-                                            });
+                                            }).catch(e => sendErrorResponse(res, e, 'MF-915'));;
                                         } else {
                                             let countunderflow = offset * -1;
                                             let fetchCount = count % 30;//if more messages are requested than the db has, return the first chunk of messages since conversation start has been reached 
@@ -331,7 +338,7 @@ function handler(req, res) {
                                                         }
                                                     }
                                                     res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, start: true });
-                                                });
+                                                }).catch(e => sendErrorResponse(res, e, 'MF-182'));;
                                             } else {
                                                 res.json({ status: 'Successful', messages: [], MSUID: MSUID, PKSH: PKSH, start: true });
                                             }
@@ -352,7 +359,7 @@ function handler(req, res) {
                                             } else {
                                                 res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH });
                                             }
-                                        }).catch(e => sendErrorResponse(res, e));
+                                        }).catch(e => sendErrorResponse(res, e, 'MF-442'));
                                     }
                                 })
                             }).catch(e => sendErrorResponse(res, e))
@@ -373,7 +380,16 @@ function handler(req, res) {
                                         chrome_web_badge: "https://www.filepicker.io/api/file/proltSCwSWqb8QgZU0UD?filename=name.png",
                                         icon: "https://www.filepicker.io/api/file/k8omnb4ySjCWXE0WQSw5?filename=name.png",
                                     };
-                                    sendNotification(notificationObj, res, true);
+                                    get(ref(db, `activeUIDs/${msgObj.targetUID}`)).then(snap => {
+                                        let heartbeat = snap.val();
+                                        if (heartbeat) {
+                                            if (Date.now() - heartbeat.tx > 5020) {
+                                                sendNotification(notificationObj, res, true);
+                                            }
+                                        } else {
+                                            sendNotification(notificationObj, res, true);
+                                        }
+                                    })
                                 }).catch(e => sendErrorResponse(res, e, 'MSG-2'));
                             }).catch(e => sendErrorResponse(res, e, 'MSG-0'));
                         }
@@ -438,6 +454,32 @@ function handler(req, res) {
                                     res.json({ status: 'Success' });
                                 }).catch(e => sendErrorResponse(res, e, 'AC-24'));
                             }).catch(e => sendErrorResponse(res, e, 'AC-110'));
+                        }
+                        if (req.query['getNotificationsConfig'] != undefined) {
+                            queryDB(`SELECT notificationsConfig FROM users WHERE uid='${data.said}'`).then(resx => {
+                                if (resx.length > 0) {
+                                    res.json({ status: 'Success', notificationsConfig: resx[0].notificationsConfig });
+                                } else {
+                                    sendErrorResponse(res, e, 'GNPF-057')
+
+                                }
+                            }).catch(e => sendErrorResponse(res, e, 'GNPF-995'))
+                        }
+                        if (req.query['updateNotificationsConfig'] != undefined) {
+                            if (req.body.newPrefs) {
+                                try {
+                                    let prefs = JSON.parse(req.body.newPrefs)
+                                    if (prefs.security != undefined && prefs.newContacts != undefined && prefs.messages != undefined) {
+                                        queryDB(`UPDATE users SET notificationsConfig='${JSON.stringify(prefs)}' WHERE uid='${data.said}'`).then(() => {
+                                            res.json({ status: 'Success' });
+                                        }).catch(e => sendErrorResponse(res, e, 'UNPF-141'));
+                                    } else {
+                                        sendErrorResponse(res, e, 'UNPF-223')
+                                    }
+                                } catch (e) {
+                                    sendErrorResponse(res, e, 'UNPF-523')
+                                }
+                            }
                         }
                         if (req.query['verifyPassword'] != undefined) {
                             queryDB(`SELECT password FROM users WHERE uid='${data.said}'`).then(resx => {
