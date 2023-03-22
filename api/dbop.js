@@ -122,7 +122,8 @@ function handler(req, res) {
                         email: req.body.email,
                         mfa_token: JSON.stringify(mfa_mgr.generateSecret({ length: 40 })),
                         publicKey: req.body.PUBKEY,
-                        publicSigningKey: req.body.PUBSIGN
+                        publicSigningKey: req.body.PUBSIGN,
+                        notificationsConfig: JSON.stringify({ messages: false, newContacts: false, security: false })
                     }
                     queryDB(`SELECT email FROM users WHERE email='${req.body.email}'`).then(resx => {
                         if (resx.length == 0) {
