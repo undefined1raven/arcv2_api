@@ -158,10 +158,25 @@ function handler(req, res) {
                                 queryDB(`SELECT publicKey, publicSigningKey FROM users WHERE uid='${data.said}'`).then(publicKeyArr => {
                                     res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey, publicSigningKey: publicKeyArr[0].publicSigningKey });
                                 }).catch(e => { sendErrorResponse(res, e) });
+                            } else if (req.body.uidArray != undefined) {
+                                let uidArray = req.body.uidArray;
+                                if (uidArray.length > 0) {
+                                    let promiseArray = [];
+                                    for (let ix = 0; ix < uidArray.length; ix++) {
+                                        promiseArray.push(queryDB(`SELECT publicKey, publicSigningKey FROM users WHERE uid='${uidArray[ix]}'`));
+                                    }
+                                    Promise.all(promiseArray).then(resv => {
+                                        let keysHash = {};
+                                        for (let ix = 0; ix < uidArray.length; ix++) {
+                                            keysHash[uidArray[ix]] = { publicKey: resv[ix][0].publicKey, publicSigningKey: resv[ix][0].publicSigningKey }
+                                        }
+                                        res.json({ status: 'Success', pubkeyHash: keysHash });
+                                    }).catch(e => sendErrorResponse(res, e, 'PMNX-884'));
+                                } else {
+                                    res.json({ status: 'Failed', error: 'NX-664' });
+                                }
                             } else {
-                                queryDB(`SELECT publicKey, publicSigningKey FROM users WHERE uid='${req.body.uid}'`).then(publicKeyArr => {
-                                    res.json({ status: 'Successful', publicKey: publicKeyArr[0].publicKey, publicSigningKey: publicKeyArr[0].publicSigningKey });
-                                }).catch(e => { sendErrorResponse(res, e) });
+                                res.json({ status: 'Failed', error: 'NX-451' });
                             }
                         }
                         if (req.query['searchUser'] != undefined) {
