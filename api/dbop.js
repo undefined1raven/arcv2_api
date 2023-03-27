@@ -221,6 +221,15 @@ function handler(req, res) {
                                 }).catch(e => { sendErrorResponse(res, e) });
                             }).catch(e => { sendErrorResponse(res, e) });
                         }
+                        if (req.query['getLogs'] != undefined) {
+                            queryDB(`SELECT tx, severity, type, subtype, ip, location, details FROM Logs WHERE uid='${data.said}' ORDER BY tx DESC LIMIT ${req.body.count}`).then(resx => {
+                                if (resx.length > 0) {
+                                    res.json({ status: 'Success', logs: resx });
+                                } else {
+                                    res.json({ status: 'Success', logs: [] });
+                                }
+                            }).catch(e => sendErrorResponse(res, e, 'LF-3356'))
+                        }
                         if (req.query['getRequests'] != undefined) {
                             queryDB(`SELECT foreignUID, status FROM refs WHERE ownUID='${data.said}'`).then(refs => {
                                 let pendingRequestsArr = [];

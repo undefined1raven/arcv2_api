@@ -56,6 +56,7 @@ function handler(req, res) {
                             let ntid = v4();
                             bcrypt.hash(`${ntid}${process.env.AT_SALT}${cip}`, 10).then(secHash => {
                                 const add_token_to_rtdb = ref(db, `authTokens/${ntid}`);
+                                queryDB(`INSERT INTO Logs SET tx='${Date.now()}', uid='${user.uid}', severity='warning', type='Account', subtype='Log In', ip='${cip}', location='${req.body.location}', details='${req.body.details}'`).then().catch(e => { })
                                 set(add_token_to_rtdb, {
                                     tx: Date.now(),
                                     ip: cip,
