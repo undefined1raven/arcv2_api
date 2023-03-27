@@ -481,6 +481,18 @@ function handler(req, res) {
                                 }).catch(e => sendErrorResponse(res, e, 'AC-24'));
                             }).catch(e => sendErrorResponse(res, e, 'AC-110'));
                         }
+                        
+                        if (req.query['getLogsConfig'] != undefined) {
+                            queryDB(`SELECT logsConfig FROM users WHERE uid='${data.said}'`).then(resx => {
+                                if (resx.length > 0) {
+                                    res.json({ status: 'Success', logsConfig: resx[0].logsConfig });
+                                } else {
+                                    sendErrorResponse(res, e, 'LCF-881')
+
+                                }
+                            }).catch(e => sendErrorResponse(res, e, 'GNPF-995'))
+                        }
+
                         if (req.query['getNotificationsConfig'] != undefined) {
                             queryDB(`SELECT notificationsConfig FROM users WHERE uid='${data.said}'`).then(resx => {
                                 if (resx.length > 0) {
@@ -490,6 +502,23 @@ function handler(req, res) {
 
                                 }
                             }).catch(e => sendErrorResponse(res, e, 'GNPF-995'))
+                        }
+                        
+                        if (req.query['updateLogsConfig'] != undefined) {
+                            if (req.body.newPrefs) {
+                                try {
+                                    let prefs = JSON.parse(req.body.newPrefs)
+                                    if (prefs.security != undefined && prefs.ini != undefined && prefs.account != undefined) {
+                                        queryDB(`UPDATE users SET logsConfig='${JSON.stringify(prefs)}' WHERE uid='${data.said}'`).then(() => {
+                                            res.json({ status: 'Success' });
+                                        }).catch(e => sendErrorResponse(res, e, 'LPU-554'));
+                                    } else {
+                                        sendErrorResponse(res, e, 'LPU-083')
+                                    }
+                                } catch (e) {
+                                    sendErrorResponse(res, e, 'LPU-991')
+                                }
+                            }
                         }
                         if (req.query['updateNotificationsConfig'] != undefined) {
                             if (req.body.newPrefs) {

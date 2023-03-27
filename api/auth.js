@@ -48,7 +48,7 @@ function handler(req, res) {
             } else {
                 useridType = 'email';
             }
-            queryDB(`SELECT email, password, uid, username FROM users WHERE ${useridType}='${userid}'`).then(userObjArray => {
+            queryDB(`SELECT email, logsConfig, password, uid, username FROM users WHERE ${useridType}='${userid}'`).then(userObjArray => {
                 let user = userObjArray[0];
                 if (userObjArray.length > 0) {
                     bcrypt.compare(password, user.password).then(auth_res => {
@@ -57,7 +57,11 @@ function handler(req, res) {
                             bcrypt.hash(`${ntid}${process.env.AT_SALT}${cip}`, 10).then(secHash => {
                                 const add_token_to_rtdb = ref(db, `authTokens/${ntid}`);
                                 var logsConfig = 0;
-                                try { logsConfig = JSON.parse(user.logsConfig); } catch (e) { }
+                                var showLogsConfig = false;
+                                try {
+                                    logsConfig = JSON.parse(user.logsConfig);
+                                    showLogsConfig = logsConfig.ini == false;
+                                } catch (e) { }
                                 if (logsConfig.account == true && logsConfig != 0) {
                                     queryDB(`INSERT INTO Logs SET tx='${Date.now()}', uid='${user.uid}', severity='warning', type='Account', subtype='Log In', ip='${cip}', location='${req.body.location}', details='${req.body.details}'`).then().catch(e => { })
                                 }
@@ -70,7 +74,7 @@ function handler(req, res) {
                                     hash: secHash,
                                     username: user.username
                                 }).then(r => {
-                                    res.json({ ownUID: user.uid, status: 'Successful', redirect: '/', AT: ntid, PKGetter: `${user.uid.split('-')[0]}-${user.uid.split('-')[4]}` })
+                                    res.json({ showLogsConfig: showLogsConfig, ownUID: user.uid, status: 'Successful', redirect: '/', AT: ntid, PKGetter: `${user.uid.split('-')[0]}-${user.uid.split('-')[4]}` })
                                 }).catch(e => {
                                     res.json({ status: 'Auth Error', error: e })
                                 });
