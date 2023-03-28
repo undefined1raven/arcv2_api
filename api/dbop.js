@@ -431,16 +431,20 @@ function handler(req, res) {
                             }
                             if (req.query['changePassword'] == undefined && req.query['changeUsername'] != undefined && req.body.newUsername != undefined && req.body.newUsername.length > 2) {
                                 changePasswordMode = false;
-                                queryDB(``)
                             }
                             if (changePasswordMode == -1) {
                                 res.json({ status: 'Error', id: 'REQMLF' });
                             } else {
-                                queryDB(`SELECT password FROM users WHERE uid='${data.said}'`).then(resx => {
+                                queryDB(`SELECT password, logsConfig FROM users WHERE uid='${data.said}'`).then(resx => {
                                     bcrypt.compare(req.body.currentPassword, resx[0].password).then(match => {
                                         if (match) {
+                                            var logsConfig = 0;
+                                            try { logsConfig = JSON.parse(resx[0].logsConfig) } catch (e) { }
                                             if (changePasswordMode == true) {
                                                 bcrypt.hash(req.body.newPassword, 11).then(hash => {
+                                                    if (logsConfig != 0 && logsConfig.security == true) {
+                                                        queryDB(`INSERT INTO Logs SET tx='${Date.now()}', uid='${data.said}', severity='important', type='Security', subtype='Password Changed', ip='${data.ip}', location='${req.body.location}', details='${req.body.details}'`).then().catch(e => { })
+                                                    }
                                                     queryDB(`UPDATE users SET password='${hash}' WHERE uid='${data.said}'`).then(() => {
                                                         remove(ref(db, `authTokens/${req.body.AT}`)).then(() => {
                                                             res.json({ status: 'Success', flag: true });
@@ -448,6 +452,9 @@ function handler(req, res) {
                                                     }).catch(e => sendErrorResponse(res, e, 'DR-105'));
                                                 }).catch(e => sendErrorResponse(res, e, 'HS-532'))
                                             } else if (changePasswordMode == false) {
+                                                if (logsConfig != 0 && logsConfig.account == true) {
+                                                    queryDB(`INSERT INTO Logs SET tx='${Date.now()}', uid='${data.said}', severity='info', type='Account', subtype='Username Changed', ip='${data.ip}', location='${req.body.location}', details='${req.body.details}'`).then().catch(e => { })
+                                                }
                                                 queryDB(`UPDATE users SET username='${req.body.newUsername.toString()}' WHERE uid='${data.said}'`).then(() => {
                                                     update(ref(db, `authTokens/${req.body.AT}`), { username: req.body.newUsername.toString() }).then(() => {
                                                         res.json({ status: 'Success', flag: true });
