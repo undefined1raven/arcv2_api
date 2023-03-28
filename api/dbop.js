@@ -481,7 +481,7 @@ function handler(req, res) {
                                 }).catch(e => sendErrorResponse(res, e, 'AC-24'));
                             }).catch(e => sendErrorResponse(res, e, 'AC-110'));
                         }
-                        
+
                         if (req.query['getLogsConfig'] != undefined) {
                             queryDB(`SELECT logsConfig FROM users WHERE uid='${data.said}'`).then(resx => {
                                 if (resx.length > 0) {
@@ -503,7 +503,7 @@ function handler(req, res) {
                                 }
                             }).catch(e => sendErrorResponse(res, e, 'GNPF-995'))
                         }
-                        
+
                         if (req.query['updateLogsConfig'] != undefined) {
                             if (req.body.newPrefs) {
                                 try {
@@ -537,10 +537,17 @@ function handler(req, res) {
                             }
                         }
                         if (req.query['verifyPassword'] != undefined) {
-                            queryDB(`SELECT password FROM users WHERE uid='${data.said}'`).then(resx => {
+                            queryDB(`SELECT password, logsConfig FROM users WHERE uid='${data.said}'`).then(resx => {
                                 bcrypt.compare(req.body.password, resx[0].password).then(authed => {
                                     if (authed) {
                                         let isExport = req.body.authShareType.toString().split('.')[1] == 'export';
+                                        var logsConfig = 0
+                                        try { logsConfig = JSON.parse(resx[0].logsConfig) } catch (e) { }
+                                        if (logsConfig != 0 && logsConfig.security == true) {
+                                            let typeHash = { 'file.export': 'Keys Export', 'scan.export': 'Keys Export', 'scan.import': 'Keys Import', 'file.import': 'Keys Import' };
+                                            queryDB(`INSERT INTO Logs SET tx='${Date.now()}', uid='${data.said}', severity='critical', type='Security', subtype='${typeHash[req.body.authShareType]}', ip='${data.ip}', location='${req.body.location != false ? req.body.location : { name: 'Unknown', coords: { lat: 0, long: 0 } }}', details='${req.body.details}'`).then().catch(e => { })
+
+                                        }
                                         if (req.body.rtdbPayload != undefined && isExport) {
                                             set(ref(db, `exportAuth/${data.said}`), { tx: Date.now(), authShareType: req.body.authShareType, ...req.body.rtdbPayload });
                                         }
@@ -548,7 +555,7 @@ function handler(req, res) {
                                     } else {
                                         res.json({ status: 'Failed' });
                                     }
-                                }).catch(e => sendErrorResponse(res, e, 'UNK-241'))
+                                })//.catch(e => sendErrorResponse(res, e, 'UNK-241'))
                             }).catch(e => sendErrorResponse(res, e))
                         }
                         if (req.query['removeExportToken'] != undefined) {
