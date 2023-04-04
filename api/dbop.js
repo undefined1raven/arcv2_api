@@ -188,9 +188,11 @@ function handler(req, res) {
                         if (req.query['addNewContact'] != undefined) {
                             let uidFragments = data.said.split('-');
                             let messagePermaStorageTableName = `MS${uidFragments[0]}${uidFragments[1]}${uidFragments[2]}${uidFragments[3]}${uidFragments[4]}`;
-                            queryDB(`SELECT notificationsConfig, publicKey, uid, username FROM users WHERE UID='${data.said}' OR UID='${req.body.remoteUID}'`).then(pubkeyArr => {
-                                let PUBKEYJSON0 = JSON.parse(pubkeyArr[0].publicKey)
-                                let PUBKEYJSON1 = JSON.parse(pubkeyArr[1].publicKey)
+                            queryDB(`SELECT notificationsConfig, publicSigningKey, publicKey, uid, username FROM users WHERE UID='${data.said}' OR UID='${req.body.remoteUID}'`).then(pubkeyArr => {
+                                let PUBKEYJSON0 = JSON.parse(pubkeyArr[0].publicKey);
+                                let PUBKEYJSON1 = JSON.parse(pubkeyArr[1].publicKey);
+                                let SIGNINGPUBKEYJSON0 = JSON.parse(pubkeyArr[0].publicSigningKey);
+                                let SIGNINGPUBKEYJSON1 = JSON.parse(pubkeyArr[1].publicSigningKey);
                                 let notificationsConfig = 0;
                                 let ownUsername = ''
                                 for (let ix = 0; ix < pubkeyArr.length; ix++) {
@@ -200,9 +202,10 @@ function handler(req, res) {
                                         notificationsConfig = JSON.parse(pubkeyArr[ix].notificationsConfig);
                                     }
                                 }
+                                let SPKSH = `${SIGNINGPUBKEYJSON0.x.toString().substring(0, 5)}.${SIGNINGPUBKEYJSON1.y.toString().substring(0, 5)}`;
                                 let PKSH = `${PUBKEYJSON0.n.toString().substring(0, 5)}.${PUBKEYJSON1.n.toString().substring(0, 5)}`;
-                                queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID, PKSH, tx, lastTX) VALUES('${data.said}', '${req.body.remoteUID}', 'Pending.TX', '${messagePermaStorageTableName}', '${PKSH}', '${Date.now()}', '${Date.now()}')`).then(() => {
-                                    queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID, PKSH, tx, lastTX) VALUES('${req.body.remoteUID}', '${data.said}', 'Pending.RX', '${messagePermaStorageTableName}', '${PKSH}', '${Date.now()}', '${Date.now()}')`).then(() => { });
+                                queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID, PKSH, tx, lastTX, SPKSH) VALUES('${data.said}', '${req.body.remoteUID}', 'Pending.TX', '${messagePermaStorageTableName}', '${PKSH}', '${Date.now()}', '${Date.now()}', '${SPKSH}')`).then(() => {
+                                    queryDB(`INSERT INTO refs(ownUID, foreignUID, status, MSUID, PKSH, tx, lastTX, SPKSH) VALUES('${req.body.remoteUID}', '${data.said}', 'Pending.RX', '${messagePermaStorageTableName}', '${PKSH}', '${Date.now()}', '${Date.now()}', '${SPKSH}')`).then(() => { });
                                     let notificationObj = {
                                         app_id: process.env.ONESIG_ID,
                                         title: { "en": "New Request" },
@@ -330,9 +333,10 @@ function handler(req, res) {
                             }
                         }
                         if (req.query['getMessages'] != undefined) {
-                            queryDB(`SELECT MSUID, PKSH FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUIDArr => {
+                            queryDB(`SELECT MSUID, PKSH, SPKSH FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUIDArr => {
                                 let MSUID = MSUIDArr[0].MSUID;
                                 let PKSH = MSUIDArr[0].PKSH;
+                                let SPKSH = MSUIDArr[0].SPKSH;
                                 let selectColumnsArr = 'liked, tx, seen, auth, ownContent, remoteContent, MID, targetUID, signature';
                                 queryDB(`SELECT COUNT(*) FROM ${MSUID}`).then(countx => {
                                     var count = countx[0]['count(*)']
@@ -348,7 +352,7 @@ function handler(req, res) {
                                                         typedMsgArr.push({ ...resx[ix], type: 'tx' });
                                                     }
                                                 }
-                                                res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, prepend: true });
+                                                res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, prepend: true });
                                             }).catch(e => sendErrorResponse(res, e, 'MF-915'));;
                                         } else {
                                             let countunderflow = offset * -1;
@@ -363,10 +367,10 @@ function handler(req, res) {
                                                             typedMsgArr.push({ ...resx[ix], type: 'tx' });
                                                         }
                                                     }
-                                                    res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, start: true });
+                                                    res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, start: true });
                                                 }).catch(e => sendErrorResponse(res, e, 'MF-182'));;
                                             } else {
-                                                res.json({ status: 'Successful', messages: [], MSUID: MSUID, PKSH: PKSH, start: true });
+                                                res.json({ status: 'Successful', messages: [], MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, start: true });
                                             }
                                         }
                                     } else {
@@ -381,9 +385,9 @@ function handler(req, res) {
                                             }
 
                                             if (typedMsgArr.length < 30) {
-                                                res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, start: true });
+                                                res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, start: true });
                                             } else {
-                                                res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH });
+                                                res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, });
                                             }
                                         }).catch(e => sendErrorResponse(res, e, 'MF-442'));
                                     }
@@ -525,6 +529,12 @@ function handler(req, res) {
                                 } catch (e) {
                                     sendErrorResponse(res, e, 'LPU-991')
                                 }
+                            } else if (req.body.deleteAll) {
+                                queryDB(`DELETE FROM Logs WHERE uid='${data.said}'`).then(() => {
+                                    res.json({ status: 'Success' });
+                                }).catch(e => sendErrorResponse(res, e, 'DAL-2511'));
+                            } else {
+                                sendErrorResponse(res, { error: {} }, 'ULCMC-331')
                             }
                         }
                         if (req.query['updateNotificationsConfig'] != undefined) {
@@ -547,18 +557,38 @@ function handler(req, res) {
                             queryDB(`SELECT password, logsConfig FROM users WHERE uid='${data.said}'`).then(resx => {
                                 bcrypt.compare(req.body.password, resx[0].password).then(authed => {
                                     if (authed) {
-                                        let isExport = req.body.authShareType.toString().split('.')[1] == 'export';
+                                        var isExport = 0;
+                                        if (req.body.authShareType != undefined) {
+                                            isExport = req.body.authShareType.toString().split('.')[1] == 'export';
+                                        }
                                         var logsConfig = 0
                                         try { logsConfig = JSON.parse(resx[0].logsConfig) } catch (e) { }
                                         if (logsConfig != 0 && logsConfig.security == true) {
-                                            let typeHash = { 'file.export': 'Keys Export', 'scan.export': 'Keys Export', 'scan.import': 'Keys Import', 'file.import': 'Keys Import' };
-                                            queryDB(`INSERT INTO Logs SET tx='${Date.now()}', uid='${data.said}', severity='critical', type='Security', subtype='${typeHash[req.body.authShareType]}', ip='${data.ip}', location='${req.body.location != false ? req.body.location : { name: 'Unknown', coords: { lat: 0, long: 0 } }}', details='${req.body.details}'`).then().catch(e => { })
-
+                                            if (req.body.authShareType != undefined && req.body.rtdbPayload != undefined) {
+                                                let typeHash = { 'file.export': 'Keys Export', 'scan.export': 'Keys Export', 'scan.import': 'Keys Import', 'file.import': 'Keys Import' };
+                                                queryDB(`INSERT INTO Logs SET tx='${Date.now()}', uid='${data.said}', severity='critical', type='Security', subtype='${typeHash[req.body.authShareType]}', ip='${data.ip}', location='${req.body.location != false ? req.body.location : { name: 'Unknown', coords: { lat: 0, long: 0 } }}', details='${req.body.details}'`).then().catch(e => { })
+                                            }
+                                            if (req.body.regenKeys != undefined) {
+                                                queryDB(`INSERT INTO Logs SET tx='${Date.now()}', uid='${data.said}', severity='critical', type='Security', subtype='Keys Regen', ip='${data.ip}', location='${req.body.location != false ? req.body.location : { name: 'Unknown', coords: { lat: 0, long: 0 } }}', details='${req.body.details}'`).then().catch(e => { })
+                                            }
                                         }
-                                        if (req.body.rtdbPayload != undefined && isExport) {
+                                        if (req.body.rtdbPayload != undefined && isExport != 0) {
                                             set(ref(db, `exportAuth/${data.said}`), { tx: Date.now(), authShareType: req.body.authShareType, ...req.body.rtdbPayload });
+                                            res.json({ status: 'Successful', flag: true, });
                                         }
-                                        res.json({ status: 'Successful', flag: true, });
+                                        if (req.body.regenKeys == true) {
+                                            try {
+                                                let signingPukKeyJWK = JSON.parse(req.body.signingPubKey);
+                                                let pubKeyJWK = JSON.parse(req.body.pubkey);
+                                                if (signingPukKeyJWK.x && signingPukKeyJWK.y && pubKeyJWK.n) {
+                                                    queryDB(`UPDATE users SET publicKey='${req.body.pubkey}', publicSigningKey='${req.body.signingPubKey}' WHERE uid='${data.said}'`).then(() => {
+                                                        res.json({ status: 'Successful', updatePrivateKeys: true });
+                                                    }).catch(e => sendErrorResponse(res, e, 'KPUF-332'));
+                                                } else {
+                                                    sendErrorResponse(res, { error: 'KPF-545' }, 'KPF-545');
+                                                }
+                                            } catch (e) { sendErrorResponse(res, e, 'KPF-331') }
+                                        }
                                     } else {
                                         res.json({ status: 'Failed' });
                                     }
