@@ -8,6 +8,7 @@ const { getDatabase, get, once, increment, remove, query, limitToLast, update, p
 var https = require('https');
 
 var admin = require("firebase-admin");
+const { send } = require('process');
 var serviceAccount = JSON.parse(process.env.FIREBASE_SCA);
 
 function getRandomInt(min, max) {
@@ -393,6 +394,64 @@ function handler(req, res) {
                                     }
                                 })
                             }).catch(e => sendErrorResponse(res, e))
+                        }
+                        if (req.query['updateConvoSig'] != undefined) {
+                            queryDB(`SELECT publicSigningKey, publicKey, uid, username FROM users WHERE UID='${data.said}' OR UID='${req.body.remoteUID}'`).then(resx => {
+                                queryDB(`SELECT PKSH, SPKSH FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.remoteUID}'`).then(sigsArray => {
+                                    try {
+                                        const sigs = sigsArray[0];
+                                        var pubKeysHash = {};
+                                        pubKeysHash[resx[0].uid] = { publicSigningKey: resx[0].publicSigningKey, publicKey: resx[0].publicKey, username: resx[0].username };
+                                        pubKeysHash[resx[1].uid] = { publicSigningKey: resx[1].publicSigningKey, publicKey: resx[1].publicKey, username: resx[1].username };
+
+                                        const ownPubKeySIGFragment = JSON.parse(pubKeysHash[data.said].publicKey)?.n?.toString().substring(0, 5);
+                                        const ownSigningPubKeyJWK = JSON.parse(pubKeysHash[data.said].publicSigningKey);
+                                        const ownSigningPubKeySIGFragments = { x: ownSigningPubKeyJWK.x?.toString().substring(0, 5), y: ownSigningPubKeyJWK.y.toString().substring(0, 5) };
+
+
+                                        if (sigs.PKSH.toString().includes(ownPubKeySIGFragment) && (sigs.SPKSH.toString().includes(ownSigningPubKeySIGFragments.x) || sigs.SPKSH.toString().includes(ownSigningPubKeySIGFragments.y))) {
+                                            pubKeysHash[data.said] = { ...pubKeysHash[data.said], verified: true };
+                                        } else {
+                                            pubKeysHash[data.said] = { ...pubKeysHash[data.said], verified: false };
+                                        }
+
+                                        const remotePubKeySIGFragment = JSON.parse(pubKeysHash[req.body.remoteUID].publicKey)?.n?.toString().substring(0, 5);
+                                        const remoteSigningPubKeyJWK = JSON.parse(pubKeysHash[req.body.remoteUID].publicSigningKey);
+                                        const remoteSigningPubKeySIGFragments = { x: remoteSigningPubKeyJWK.x?.toString().substring(0, 5), y: remoteSigningPubKeyJWK.y.toString().substring(0, 5) };
+
+                                        if (sigs.PKSH.toString().includes(remotePubKeySIGFragment) && (sigs.SPKSH.toString().includes(remoteSigningPubKeySIGFragments.x) || sigs.SPKSH.toString().includes(remoteSigningPubKeySIGFragments.y))) {
+                                            pubKeysHash[req.body.remoteUID] = { ...pubKeysHash[req.body.remoteUID], verified: true };
+                                        } else {
+                                            pubKeysHash[req.body.remoteUID] = { ...pubKeysHash[req.body.remoteUID], verified: false };
+                                        }
+
+                                        let ownSIGStatus = pubKeysHash[data.said].verified;
+                                        let remoteSIGStatus = pubKeysHash[req.body.remoteUID].verified;
+                                        if (ownSIGStatus && remoteSIGStatus) {
+                                            res.json({ status: 'Failed', reason: 'No Sig Mismatches' });
+                                        }
+                                        if (ownSIGStatus && !remoteSIGStatus) {
+                                            let SPKSH = `${ownSigningPubKeySIGFragments.x}.${remoteSigningPubKeySIGFragments.y}`;
+                                            let PKSH = `${ownPubKeySIGFragment}.${remotePubKeySIGFragment}`;
+                                            queryDB(`UPDATE refs SET PKSH='${PKSH}', SPKSH='${SPKSH}' WHERE (ownUID='${data.said}' AND foreignUID='${req.body.remoteUID}') OR ownUID='${req.body.remoteUID}' AND foreignUID='${data.said}'`).then(() => {
+                                                res.json({ status: 'Success' });
+                                            }).catch(e => sendErrorResponse(res, e, 'SUF-951'));
+                                        }
+                                        if (!ownSIGStatus && remoteSIGStatus) {
+                                            res.json({ status: 'Failed', reason: 'Own SIG Mismatch' });
+                                        }
+                                        if (!ownSIGStatus && !remoteSIGStatus) {
+                                            let SPKSH = `${ownSigningPubKeySIGFragments.x}.${remoteSigningPubKeySIGFragments.y}`;
+                                            let PKSH = `${ownPubKeySIGFragment}.${remotePubKeySIGFragment}`;
+                                            queryDB(`UPDATE refs SET PKSH='${PKSH}', SPKSH='${SPKSH}' WHERE (ownUID='${data.said}' AND foreignUID='${req.body.remoteUID}') OR ownUID='${req.body.remoteUID}' AND foreignUID='${data.said}'`).then(() => {
+                                                res.json({ status: 'Success' });
+                                            }).catch(e => sendErrorResponse(res, e, 'SUF-933'));
+                                        }
+                                    } catch (e) {
+                                        sendErrorResponse(res, { error: 'PE-2RR4' }, 'PRS-345');
+                                    }
+                                }).catch(e => sendErrorResponse(res, e, 'UCS-141'));
+                            }).catch(e => sendErrorResponse(res, e, 'UCS-235'));
                         }
                         if (req.query['messageSent'] != undefined) {
                             queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUID_Arr => {
