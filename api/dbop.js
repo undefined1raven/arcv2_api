@@ -654,6 +654,18 @@ function handler(req, res) {
                                 }).catch(e => sendErrorResponse(res, e, 'UNK-241'))
                             }).catch(e => sendErrorResponse(res, e))
                         }
+                        if (req.query['deleteConversation'] != undefined) {
+                            queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.remoteUID}'`).then(MSUIDArr => {
+                                if (MSUIDArr.length > 0) {
+                                    const MSUID = MSUIDArr[0].MSUID;
+                                    queryDB(`DELETE FROM ${MSUID} WHERE (originUID='${data.said}' AND targetUID='${req.body.remoteUID}') OR (originUID='${req.body.remoteUID}' AND targetUID='${data.said}')`).then(() => {
+                                        res.json({ status: 'Success' });
+                                    }).catch(e => sendErrorResponse(res, e, 'DXA-085'));
+                                } else {
+                                    sendErrorResponse(res, { error: 'DXS-205' }, 'DXS-205')
+                                }
+                            }).catch(e => sendErrorResponse(res, e, 'DCX-110'));
+                        }
                         if (req.query['removeContact'] != undefined) {
                             queryDB(`DELETE FROM refs WHERE (ownUID='${data.said}' AND foreignUID='${req.body.remoteUID}') OR (ownUID='${req.body.remoteUID}' AND foreignUID='${data.said}')`).then(() => {
                                 res.json({ status: 'Success' });
