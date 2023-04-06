@@ -334,7 +334,7 @@ function handler(req, res) {
                             }
                         }
                         if (req.query['getMessages'] != undefined) {
-                            queryDB(`SELECT MSUID, PKSH, SPKSH FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUIDArr => {
+                            queryDB(`SELECT MSUID, PKSH, SPKSH, lastTX FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUIDArr => {
                                 let MSUID = MSUIDArr[0].MSUID;
                                 let PKSH = MSUIDArr[0].PKSH;
                                 let SPKSH = MSUIDArr[0].SPKSH;
@@ -353,7 +353,7 @@ function handler(req, res) {
                                                         typedMsgArr.push({ ...resx[ix], type: 'tx' });
                                                     }
                                                 }
-                                                res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, prepend: true });
+                                                res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, lastTX: MSUIDArr[0].lastTX, PKSH: PKSH, SPKSH: SPKSH, prepend: true });
                                             }).catch(e => sendErrorResponse(res, e, 'MF-915'));;
                                         } else {
                                             let countunderflow = offset * -1;
@@ -368,10 +368,10 @@ function handler(req, res) {
                                                             typedMsgArr.push({ ...resx[ix], type: 'tx' });
                                                         }
                                                     }
-                                                    res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, start: true });
+                                                    res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, lastTX: MSUIDArr[0].lastTX, PKSH: PKSH, SPKSH: SPKSH, start: true });
                                                 }).catch(e => sendErrorResponse(res, e, 'MF-182'));;
                                             } else {
-                                                res.json({ status: 'Successful', messages: [], MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, start: true });
+                                                res.json({ status: 'Successful', messages: [], MSUID: MSUID, lastTX: MSUIDArr[0].lastTX, PKSH: PKSH, SPKSH: SPKSH, start: true });
                                             }
                                         }
                                     } else {
@@ -386,9 +386,9 @@ function handler(req, res) {
                                             }
 
                                             if (typedMsgArr.length < 30) {
-                                                res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, start: true });
+                                                res.json({ status: 'Successful', messages: typedMsgArr, lastTX: MSUIDArr[0].lastTX, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, start: true });
                                             } else {
-                                                res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, });
+                                                res.json({ status: 'Successful', messages: typedMsgArr, lastTX: MSUIDArr[0].lastTX, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, });
                                             }
                                         }).catch(e => sendErrorResponse(res, e, 'MF-442'));
                                     }
@@ -651,7 +651,7 @@ function handler(req, res) {
                                     } else {
                                         res.json({ status: 'Failed' });
                                     }
-                                })//.catch(e => sendErrorResponse(res, e, 'UNK-241'))
+                                }).catch(e => sendErrorResponse(res, e, 'UNK-241'))
                             }).catch(e => sendErrorResponse(res, e))
                         }
                         if (req.query['removeExportToken'] != undefined) {
