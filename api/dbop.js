@@ -654,6 +654,11 @@ function handler(req, res) {
                                 }).catch(e => sendErrorResponse(res, e, 'UNK-241'))
                             }).catch(e => sendErrorResponse(res, e))
                         }
+                        if (req.query['removeContact'] != undefined) {
+                            queryDB(`DELETE FROM refs WHERE (ownUID='${data.said}' AND foreignUID='${req.body.remoteUID}') OR (ownUID='${req.body.remoteUID}' AND foreignUID='${data.said}')`).then(() => {
+                                res.json({ status: 'Success' });
+                            }).catch(e => sendErrorResponse(res, e, 'RMC-388'));
+                        }
                         if (req.query['removeExportToken'] != undefined) {
                             remove(ref(db, `exportAuth/${req.body.DPID}`))
                             res.json({ 200: 200 })
