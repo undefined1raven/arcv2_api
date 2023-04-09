@@ -617,28 +617,33 @@ function handler(req, res) {
                                 bcrypt.compare(req.body.password, resx[0].password).then(authed => {
                                     if (authed) {
                                         var isExport = 0;
+                                        var requestType = 0; //IDtransfer || keysRegen
                                         if (req.body.authShareType != undefined) {
+                                            requestType = 'IDtransfer';
                                             isExport = req.body.authShareType.toString().split('.')[1] == 'export';
+                                        }
+                                        if (req.body.regenKeys == true) {
+                                            requestType = 'keysRegen';
                                         }
                                         var logsConfig = 0;
                                         try { logsConfig = JSON.parse(resx[0].logsConfig) } catch (e) { sendErrorResponse(res, e, 'JPF-231') }
                                         if (logsConfig != 0 && logsConfig.security == true) {
-                                            if (req.body.authShareType != undefined && req.body.rtdbPayload != undefined) {
+                                            if (req.body.authShareType != undefined && req.body.rtdbPayload != undefined && requestType == 'IDtransfer') {
                                                 let typeHash = { 'file.export': 'Keys Export', 'scan.export': 'Keys Export', 'scan.import': 'Keys Import', 'file.import': 'Keys Import' };
                                                 queryDB(`INSERT INTO Logs SET tx='${Date.now()}', uid='${data.said}', severity='critical', type='Security', subtype='${typeHash[req.body.authShareType]}', ip='${data.ip}', location='${req.body.location != false ? req.body.location : { name: 'Unknown', coords: { lat: 0, long: 0 } }}', details='${req.body.details}'`).then().catch(e => { sendErrorResponse(res, e, 'LRF-339') })
                                             }
-                                            if (req.body.regenKeys != undefined) {
+                                            if (req.body.regenKeys != undefined && requestType == 'keysRegen') {
                                                 queryDB(`INSERT INTO Logs SET tx='${Date.now()}', uid='${data.said}', severity='critical', type='Security', subtype='Keys Regen', ip='${data.ip}', location='${req.body.location != false ? req.body.location : { name: 'Unknown', coords: { lat: 0, long: 0 } }}', details='${req.body.details}'`).then().catch(e => { sendErrorResponse(res, e, 'LRF-339') })
                                             }
                                         }
-                                        if (req.body.rtdbPayload != undefined && isExport != 0) {
+                                        if (req.body.rtdbPayload != undefined && req.body.authShareType != undefined && requestType == 'IDtransfer' && isExport == true) {
                                             set(ref(db, `exportAuth/${data.said}`), { tx: Date.now(), authShareType: req.body.authShareType, ...req.body.rtdbPayload });
                                             res.json({ status: 'Successful', flag: true, });
                                         }
-                                        if (isExport == false && isExport != 0) {
+                                        if (requestType == 'IDtransfer' && isExport == false) {
                                             res.json({ status: 'Successful', flag: true, });
                                         }
-                                        if (req.body.regenKeys == true) {
+                                        if (req.body.regenKeys == true && requestType == 'keysRegen') {
                                             try {
                                                 let signingPukKeyJWK = JSON.parse(req.body.signingPubKey);
                                                 let pubKeyJWK = JSON.parse(req.body.pubkey);
