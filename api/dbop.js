@@ -620,15 +620,15 @@ function handler(req, res) {
                                         if (req.body.authShareType != undefined) {
                                             isExport = req.body.authShareType.toString().split('.')[1] == 'export';
                                         }
-                                        var logsConfig = 0
-                                        try { logsConfig = JSON.parse(resx[0].logsConfig) } catch (e) { }
+                                        var logsConfig = 0;
+                                        try { logsConfig = JSON.parse(resx[0].logsConfig) } catch (e) { sendErrorResponse(res, e, 'JPF-231') }
                                         if (logsConfig != 0 && logsConfig.security == true) {
                                             if (req.body.authShareType != undefined && req.body.rtdbPayload != undefined) {
                                                 let typeHash = { 'file.export': 'Keys Export', 'scan.export': 'Keys Export', 'scan.import': 'Keys Import', 'file.import': 'Keys Import' };
-                                                queryDB(`INSERT INTO Logs SET tx='${Date.now()}', uid='${data.said}', severity='critical', type='Security', subtype='${typeHash[req.body.authShareType]}', ip='${data.ip}', location='${req.body.location != false ? req.body.location : { name: 'Unknown', coords: { lat: 0, long: 0 } }}', details='${req.body.details}'`).then().catch(e => { })
+                                                queryDB(`INSERT INTO Logs SET tx='${Date.now()}', uid='${data.said}', severity='critical', type='Security', subtype='${typeHash[req.body.authShareType]}', ip='${data.ip}', location='${req.body.location != false ? req.body.location : { name: 'Unknown', coords: { lat: 0, long: 0 } }}', details='${req.body.details}'`).then().catch(e => { sendErrorResponse(res, e, 'LRF-339') })
                                             }
                                             if (req.body.regenKeys != undefined) {
-                                                queryDB(`INSERT INTO Logs SET tx='${Date.now()}', uid='${data.said}', severity='critical', type='Security', subtype='Keys Regen', ip='${data.ip}', location='${req.body.location != false ? req.body.location : { name: 'Unknown', coords: { lat: 0, long: 0 } }}', details='${req.body.details}'`).then().catch(e => { })
+                                                queryDB(`INSERT INTO Logs SET tx='${Date.now()}', uid='${data.said}', severity='critical', type='Security', subtype='Keys Regen', ip='${data.ip}', location='${req.body.location != false ? req.body.location : { name: 'Unknown', coords: { lat: 0, long: 0 } }}', details='${req.body.details}'`).then().catch(e => { sendErrorResponse(res, e, 'LRF-339') })
                                             }
                                         }
                                         if (req.body.rtdbPayload != undefined && isExport != 0) {
