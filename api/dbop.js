@@ -509,9 +509,19 @@ function handler(req, res) {
                                                         queryDB(`INSERT INTO Logs SET tx='${Date.now()}', uid='${data.said}', severity='important', type='Security', subtype='Password Changed', ip='${data.ip}', location='${req.body.location}', details='${req.body.details}'`).then().catch(e => { })
                                                     }
                                                     queryDB(`UPDATE users SET password='${hash}' WHERE uid='${data.said}'`).then(() => {
+                                                        get(ref(db, 'authTokens/')).then(val => {
+                                                            const authTokens = val.val();
+                                                            for (let key in authTokens) {
+                                                                if (authTokens[key].said == data.said) {
+                                                                    try {
+                                                                        set(ref(db, `authTokens/${key.toString()}`), null).then().catch(e => { });
+                                                                    } catch (e) { }//glitchy childPathObj.split is not a function fix
+                                                                }
+                                                            }
+                                                        });
                                                         remove(ref(db, `authTokens/${req.body.AT}`)).then(() => {
                                                             res.json({ status: 'Success', flag: true });
-                                                        });
+                                                        }).catch(e => sendErrorResponse(res, e, 'OATF-5592'));
                                                     }).catch(e => sendErrorResponse(res, e, 'DR-105'));
                                                 }).catch(e => sendErrorResponse(res, e, 'HS-532'))
                                             } else if (changePasswordMode == false) {
