@@ -635,6 +635,9 @@ function handler(req, res) {
                                             set(ref(db, `exportAuth/${data.said}`), { tx: Date.now(), authShareType: req.body.authShareType, ...req.body.rtdbPayload });
                                             res.json({ status: 'Successful', flag: true, });
                                         }
+                                        if (!isExport) {
+                                            res.json({ status: 'Successful', flag: true, });
+                                        }
                                         if (req.body.regenKeys == true) {
                                             try {
                                                 let signingPukKeyJWK = JSON.parse(req.body.signingPubKey);
