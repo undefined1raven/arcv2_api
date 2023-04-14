@@ -338,7 +338,7 @@ function handler(req, res) {
                                 let MSUID = MSUIDArr[0].MSUID;
                                 let PKSH = MSUIDArr[0].PKSH;
                                 let SPKSH = MSUIDArr[0].SPKSH;
-                                let selectColumnsArr = 'liked, tx, seen, auth, ownContent, remoteContent, MID, targetUID, signature';
+                                let selectColumnsArr = 'liked, tx, seen, auth, ownContent, remoteContent, MID, targetUID, signature, typeOverride';
                                 queryDB(`SELECT COUNT(*) FROM ${MSUID}`).then(countx => {
                                     var count = countx[0]['count(*)']
                                     if (req.body.offset) {
@@ -457,7 +457,7 @@ function handler(req, res) {
                             queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUID_Arr => {
                                 let MSUID = MSUID_Arr[0].MSUID;
                                 let msgObj = req.body;
-                                queryDB(`INSERT INTO ${MSUID}(liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID, originUID, signature) VALUES(${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${msgObj.MID}', '${data.said}', '${msgObj.signature}')`).then(resx => {
+                                queryDB(`INSERT INTO ${MSUID}(liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID, originUID, signature, typeOverride) VALUES(${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${msgObj.MID}', '${data.said}', '${msgObj.signature}', '${msgObj.typeOverride}')`).then(resx => {
                                     let notificationObj = {
                                         app_id: process.env.ONESIG_ID,
                                         title: { "en": "New Message" },
