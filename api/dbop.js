@@ -104,6 +104,31 @@ function getRefsFromFUIDs(fUID_Arr, res, ownUID) {
     }
 }
 
+
+function messageQueryHandler(res, resx, MSUIDArr, MSUID, PKSH, SPKSH, data, selectColumnsArr, additionalResponseArgs) {
+    let typedMsgArr = []
+    let imgChunksPromiseArray = [];
+    for (let ix = 0; ix < resx.length; ix++) {
+        if (resx[ix].typeOverride == 'image.0') {
+            imgChunksPromiseArray.push(queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE MID='${resx[ix].MID}'`));
+        } else if (resx[ix].typeOverride == 'none' || resx[ix].typeOverride == null || resx[ix].typeOverride == undefined) {
+            typedMsgArr.push({ ...resx[ix], type: `${resx[ix].targetUID == data.said ? 'rx' : 'tx'}` });
+        }
+    }
+    if (imgChunksPromiseArray.length > 0) {
+        Promise.all(imgChunksPromiseArray).then(imageChunksArr => {
+            imageChunksArr.forEach(imageChunks => {
+                imageChunks.forEach(chunk => {
+                    typedMsgArr.push({ ...chunk, type: `${chunk.targetUID == data.said ? 'rx' : 'tx'}` });
+                })
+            })
+            res.json({ status: 'Successful', messages: typedMsgArr, lastTX: MSUIDArr[0].lastTX, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, start: `${typedMsgArr.length < 30 ? true : false}`, ...additionalResponseArgs });
+        })
+    } else {
+        res.json({ status: 'Successful', messages: typedMsgArr, lastTX: MSUIDArr[0].lastTX, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, start: `${typedMsgArr.length < 30 ? true : false}`, ...additionalResponseArgs });
+    }
+}
+
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     databaseURL: "https://ring-relay-default-rtdb.europe-west1.firebasedatabase.app/"
@@ -132,7 +157,7 @@ function handler(req, res) {
                             connection.query('INSERT INTO users SET ?', { ...accountData, tx: `${Date.now()}` }, (err, resxq, fields) => { });
                             let nuidFragments = nuid.split('-');
                             let MSName = `MS${nuidFragments[0]}${nuidFragments[1]}${nuidFragments[2]}${nuidFragments[3]}${nuidFragments[4]}`;
-                            queryDB(`CREATE TABLE ${MSName}(liked BOOLEAN, tx varchar(150), seen BOOLEAN, auth BOOLEAN, ownContent text, remoteContent text, targetUID varchar(80), MID varchar(80), originUID varchar(80), signature varchar(200))`).then(resx => {
+                            queryDB(`CREATE TABLE ${MSName}(liked BOOLEAN, tx varchar(150), seen BOOLEAN, auth BOOLEAN, ownContent text, remoteContent text, targetUID varchar(80), MID varchar(80), originUID varchar(80), signature varchar(200), typeOverride varchar(200))`).then(resx => {
                                 res.json({ status: 'Success' });
                             }).catch(e => sendErrorResponse(res, e, 'X-MS-UID'));
                         } else {
@@ -344,52 +369,23 @@ function handler(req, res) {
                                     if (req.body.offset) {
                                         const offset = count - req.body.offset;
                                         if (offset >= 0) {
-                                            queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') ORDER BY tx ASC LIMIT ${offset}, ${30}`).then(resx => {
-                                                let typedMsgArr = []
-                                                for (let ix = 0; ix < resx.length; ix++) {
-                                                    if (resx[ix].targetUID == data.said) {
-                                                        typedMsgArr.push({ ...resx[ix], type: 'rx' });
-                                                    } else {
-                                                        typedMsgArr.push({ ...resx[ix], type: 'tx' });
-                                                    }
-                                                }
-                                                res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, lastTX: MSUIDArr[0].lastTX, PKSH: PKSH, SPKSH: SPKSH, prepend: true });
+                                            queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') AND (typeOverride='null' OR typeOverride='none' OR typeOverride='image.0') LIMIT ${offset}, ${30}`).then(resx => {//ORDER BY tx ASC
+                                                messageQueryHandler(res, resx, MSUIDArr, MSUID, PKSH, SPKSH, data, selectColumnsArr, { prepend: true });
                                             }).catch(e => sendErrorResponse(res, e, 'MF-915'));;
                                         } else {
                                             let countunderflow = offset * -1;
                                             let fetchCount = count % 30;//if more messages are requested than the db has, return the first chunk of messages since conversation start has been reached 
                                             if (countunderflow <= 30) {
-                                                queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') ORDER BY tx ASC LIMIT ${0}, ${fetchCount}`).then(resx => {
-                                                    let typedMsgArr = []
-                                                    for (let ix = 0; ix < resx.length; ix++) {
-                                                        if (resx[ix].targetUID == data.said) {
-                                                            typedMsgArr.push({ ...resx[ix], type: 'rx' });
-                                                        } else {
-                                                            typedMsgArr.push({ ...resx[ix], type: 'tx' });
-                                                        }
-                                                    }
-                                                    res.json({ status: 'Successful', messages: typedMsgArr, MSUID: MSUID, lastTX: MSUIDArr[0].lastTX, PKSH: PKSH, SPKSH: SPKSH, start: true });
+                                                queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') AND (typeOverride='null' OR typeOverride='none' OR typeOverride='image.0') LIMIT ${0}, ${fetchCount}`).then(resx => {//ORDER BY tx ASC
+                                                    messageQueryHandler(res, resx, MSUIDArr, MSUID, PKSH, SPKSH, data, selectColumnsArr);
                                                 }).catch(e => sendErrorResponse(res, e, 'MF-182'));;
                                             } else {
                                                 res.json({ status: 'Successful', messages: [], MSUID: MSUID, lastTX: MSUIDArr[0].lastTX, PKSH: PKSH, SPKSH: SPKSH, start: true });
                                             }
                                         }
                                     } else {
-                                        queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') ORDER BY tx DESC LIMIT ${30}`).then(resx => {
-                                            let typedMsgArr = []
-                                            for (let ix = 0; ix < resx.length; ix++) {
-                                                if (resx[ix].targetUID == data.said) {
-                                                    typedMsgArr.push({ ...resx[ix], type: 'rx' });
-                                                } else {
-                                                    typedMsgArr.push({ ...resx[ix], type: 'tx' });
-                                                }
-                                            }
-
-                                            if (typedMsgArr.length < 30) {
-                                                res.json({ status: 'Successful', messages: typedMsgArr, lastTX: MSUIDArr[0].lastTX, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, start: true });
-                                            } else {
-                                                res.json({ status: 'Successful', messages: typedMsgArr, lastTX: MSUIDArr[0].lastTX, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, });
-                                            }
+                                        queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') AND (typeOverride='null' OR typeOverride='none' OR typeOverride='image.0') LIMIT ${30}`).then(resx => {//ORDER BY tx DESC
+                                            messageQueryHandler(res, resx, MSUIDArr, MSUID, PKSH, SPKSH, data, selectColumnsArr);
                                         }).catch(e => sendErrorResponse(res, e, 'MF-442'));
                                     }
                                 })
