@@ -110,7 +110,7 @@ function messageQueryHandler(res, resx, MSUIDArr, MSUID, PKSH, SPKSH, data, sele
     let imgChunksPromiseArray = [];
     for (let ix = 0; ix < resx.length; ix++) {
         if (resx[ix].typeOverride == 'image.0') {
-            imgChunksPromiseArray.push(queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE MID='${resx[ix].MID}'`));
+            imgChunksPromiseArray.push(queryDB(`SELECT ${selectColumnsArr} FROM ImageData WHERE MID='${resx[ix].MID}'`));
         } else if (resx[ix].typeOverride == 'none' || resx[ix].typeOverride == null || resx[ix].typeOverride == undefined) {
             typedMsgArr.push({ ...resx[ix], type: `${resx[ix].targetUID == data.said ? 'rx' : 'tx'}` });
         }
@@ -134,6 +134,32 @@ admin.initializeApp({
     databaseURL: "https://ring-relay-default-rtdb.europe-west1.firebasedatabase.app/"
 });
 const db = admin.database();
+
+function defaultMessageSave(msgObj, data, res, MSUID) {
+    queryDB(`INSERT INTO ${MSUID}(liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID, originUID, signature, typeOverride) VALUES(${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${msgObj.MID}', '${data.said}', '${msgObj.signature}', '${msgObj.typeOverride}')`).then(resx => {
+        let notificationObj = {
+            app_id: process.env.ONESIG_ID,
+            title: { "en": "New Message" },
+            web_buttons: [{ id: 'like', text: 'Like' }, { id: 'markAsSeen', text: 'Mark as seen' }],
+            contents: { "en": `New message from ${data.username}` },
+            channel_for_external_user_ids: 'push',
+            priority: 10,
+            include_external_user_ids: [msgObj.targetUID],
+            chrome_web_badge: "https://www.filepicker.io/api/file/proltSCwSWqb8QgZU0UD?filename=name.png",
+            icon: "https://www.filepicker.io/api/file/k8omnb4ySjCWXE0WQSw5?filename=name.png",
+        };
+        get(ref(db, `activeUIDs/${msgObj.targetUID}`)).then(snap => {
+            let heartbeat = snap.val();
+            if (heartbeat) {
+                if (Date.now() - heartbeat.tx > 5020) {
+                    sendNotification(notificationObj, res, true);
+                }
+            } else {
+                sendNotification(notificationObj, res, true);
+            }
+        })
+    }).catch(e => sendErrorResponse(res, e, 'MSG-2'));
+}
 
 function handler(req, res) {
     try {
@@ -369,7 +395,7 @@ function handler(req, res) {
                                     if (req.body.offset) {
                                         const offset = count - req.body.offset;
                                         if (offset >= 0) {
-                                            queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') AND (typeOverride='null' OR typeOverride='none' OR typeOverride='image.0') LIMIT ${offset}, ${30}`).then(resx => {//ORDER BY tx ASC
+                                            queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') AND (typeOverride='null' OR typeOverride='none' OR typeOverride='image.0') LIMIT ${offset}, ${60}`).then(resx => {//ORDER BY tx ASC
                                                 messageQueryHandler(res, resx, MSUIDArr, MSUID, PKSH, SPKSH, data, selectColumnsArr, { prepend: true });
                                             }).catch(e => sendErrorResponse(res, e, 'MF-915'));;
                                         } else {
@@ -384,7 +410,7 @@ function handler(req, res) {
                                             }
                                         }
                                     } else {
-                                        queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') AND (typeOverride='null' OR typeOverride='none' OR typeOverride='image.0') LIMIT ${30}`).then(resx => {//ORDER BY tx DESC
+                                        queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') AND (typeOverride='null' OR typeOverride='none' OR typeOverride='image.0') LIMIT ${60}`).then(resx => {//ORDER BY tx DESC
                                             messageQueryHandler(res, resx, MSUIDArr, MSUID, PKSH, SPKSH, data, selectColumnsArr);
                                         }).catch(e => sendErrorResponse(res, e, 'MF-442'));
                                     }
@@ -453,29 +479,18 @@ function handler(req, res) {
                             queryDB(`SELECT MSUID FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUID_Arr => {
                                 let MSUID = MSUID_Arr[0].MSUID;
                                 let msgObj = req.body;
-                                queryDB(`INSERT INTO ${MSUID}(liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID, originUID, signature, typeOverride) VALUES(${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${msgObj.MID}', '${data.said}', '${msgObj.signature}', '${msgObj.typeOverride}')`).then(resx => {
-                                    let notificationObj = {
-                                        app_id: process.env.ONESIG_ID,
-                                        title: { "en": "New Message" },
-                                        web_buttons: [{ id: 'like', text: 'Like' }, { id: 'markAsSeen', text: 'Mark as seen' }],
-                                        contents: { "en": `New message from ${data.username}` },
-                                        channel_for_external_user_ids: 'push',
-                                        priority: 10,
-                                        include_external_user_ids: [msgObj.targetUID],
-                                        chrome_web_badge: "https://www.filepicker.io/api/file/proltSCwSWqb8QgZU0UD?filename=name.png",
-                                        icon: "https://www.filepicker.io/api/file/k8omnb4ySjCWXE0WQSw5?filename=name.png",
-                                    };
-                                    get(ref(db, `activeUIDs/${msgObj.targetUID}`)).then(snap => {
-                                        let heartbeat = snap.val();
-                                        if (heartbeat) {
-                                            if (Date.now() - heartbeat.tx > 5020) {
-                                                sendNotification(notificationObj, res, true);
-                                            }
-                                        } else {
-                                            sendNotification(notificationObj, res, true);
+                                if (msgObj.typeOverride != 'none') {
+                                    let typeOverrideProps = msgObj.typeOverride.split('.');
+                                    if (typeOverrideProps.length > 0) {
+                                        if (typeOverrideProps[1] != '0' && typeOverrideProps[0] == 'image') {//saves the image data to the image data table (if its not the first image chunk)
+                                            queryDB(`INSERT INTO ImageData(liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID, originUID, signature, typeOverride) VALUES(${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${msgObj.MID}', '${data.said}', '${msgObj.signature}', '${msgObj.typeOverride}')`).then(resx => { }).catch(e => { sendErrorResponse(res, e, 'MIDRF-342') });
+                                        } else if (typeOverrideProps[1] == '0' && typeOverrideProps[0] == 'image') {
+                                            defaultMessageSave(msgObj, data, res, MSUID);
                                         }
-                                    })
-                                }).catch(e => sendErrorResponse(res, e, 'MSG-2'));
+                                    }
+                                } else {
+                                    defaultMessageSave(msgObj, data, res, MSUID);
+                                }
                             }).catch(e => sendErrorResponse(res, e, 'MSG-0'));
                         }
                         if (req.query['likeMessage'] != undefined) {
