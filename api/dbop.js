@@ -111,6 +111,7 @@ function messageQueryHandler(res, resx, MSUIDArr, MSUID, PKSH, SPKSH, data, sele
     for (let ix = 0; ix < resx.length; ix++) {
         if (resx[ix].typeOverride == 'image.0') {
             imgChunksPromiseArray.push(queryDB(`SELECT ${selectColumnsArr} FROM ImageData WHERE MID='${resx[ix].MID}'`));
+            typedMsgArr.push({ ...resx[ix], type: `${resx[ix].targetUID == data.said ? 'rx' : 'tx'}` });
         } else if (resx[ix].typeOverride == 'none' || resx[ix].typeOverride == null || resx[ix].typeOverride == undefined) {
             typedMsgArr.push({ ...resx[ix], type: `${resx[ix].targetUID == data.said ? 'rx' : 'tx'}` });
         }
@@ -483,8 +484,12 @@ function handler(req, res) {
                                     let typeOverrideProps = msgObj.typeOverride.split('.');
                                     if (typeOverrideProps.length > 0) {
                                         if (typeOverrideProps[1] != '0' && typeOverrideProps[0] == 'image') {//saves the image data to the image data table (if its not the first image chunk)
-                                            queryDB(`INSERT INTO ImageData(liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID, originUID, signature, typeOverride) VALUES(${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${msgObj.MID}', '${data.said}', '${msgObj.signature}', '${msgObj.typeOverride}')`).then(resx => { }).catch(e => { sendErrorResponse(res, e, 'MIDRF-342') });
+                                            console.log('chunk')
+                                            queryDB(`INSERT INTO ImageData(liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID, originUID, signature, typeOverride) VALUES(${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${msgObj.MID}', '${data.said}', '${msgObj.signature}', '${msgObj.typeOverride}')`).then(resx => {
+                                                res.json({ status: 'Success' });
+                                            }).catch(e => { sendErrorResponse(res, e, 'MIDRF-342') });
                                         } else if (typeOverrideProps[1] == '0' && typeOverrideProps[0] == 'image') {
+                                            console.log('ref')
                                             defaultMessageSave(msgObj, data, res, MSUID);
                                         }
                                     }
