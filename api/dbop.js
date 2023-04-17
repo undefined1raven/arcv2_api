@@ -6,7 +6,7 @@ const connection = mysql.createConnection(process.env.DB_KEY)
 const mfa_mgr = require('speakeasy');
 const { getDatabase, get, once, increment, remove, query, limitToLast, update, push, set, ref, onValue } = require("firebase/database");
 var https = require('https');
-
+const zlib = require('zlib');
 var admin = require("firebase-admin");
 const { send } = require('process');
 var serviceAccount = JSON.parse(process.env.FIREBASE_SCA);
@@ -44,6 +44,7 @@ var sendNotification = function (data, lres, sendRes) {
     });
 
     req.write(JSON.stringify(data));
+    lres.json({ status: 'Success' });
     req.end();
 };
 
@@ -123,9 +124,15 @@ function messageQueryHandler(res, resx, MSUIDArr, MSUID, PKSH, SPKSH, data, sele
                     typedMsgArr.push({ ...chunk, type: `${chunk.targetUID == data.said ? 'rx' : 'tx'}` });
                 })
             })
+            zlib.deflate(new Buffer.from(JSON.stringify({ msgs: [...typedMsgArr] })), (e, buf) => {
+                // console.log(buf)
+            });
             res.json({ status: 'Successful', messages: typedMsgArr, lastTX: MSUIDArr[0].lastTX, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, start: `${typedMsgArr.length < 30 ? true : false}`, ...additionalResponseArgs });
         })
     } else {
+        zlib.deflate(new Buffer.from(JSON.stringify({ msgs: [...typedMsgArr] })), (e, buf) => {
+            // console.log(buf)
+        });
         res.json({ status: 'Successful', messages: typedMsgArr, lastTX: MSUIDArr[0].lastTX, MSUID: MSUID, PKSH: PKSH, SPKSH: SPKSH, start: `${typedMsgArr.length < 30 ? true : false}`, ...additionalResponseArgs });
     }
 }
@@ -159,6 +166,9 @@ function defaultMessageSave(msgObj, data, res, MSUID) {
                 sendNotification(notificationObj, res, true);
             }
         })
+        setTimeout(() => {
+            res.json({ status: 'TM-533' });
+        }, 5000);
     }).catch(e => sendErrorResponse(res, e, 'MSG-2'));
 }
 
@@ -484,12 +494,10 @@ function handler(req, res) {
                                     let typeOverrideProps = msgObj.typeOverride.split('.');
                                     if (typeOverrideProps.length > 0) {
                                         if (typeOverrideProps[1] != '0' && typeOverrideProps[0] == 'image') {//saves the image data to the image data table (if its not the first image chunk)
-                                            console.log('chunk')
                                             queryDB(`INSERT INTO ImageData(liked, tx, seen, auth, ownContent, remoteContent, targetUID, MID, originUID, signature, typeOverride) VALUES(${msgObj.liked}, '${msgObj.tx}', ${msgObj.seen}, ${msgObj.auth}, '${msgObj.ownContent}', '${msgObj.remoteContent}', '${msgObj.targetUID}', '${msgObj.MID}', '${data.said}', '${msgObj.signature}', '${msgObj.typeOverride}')`).then(resx => {
                                                 res.json({ status: 'Success' });
                                             }).catch(e => { sendErrorResponse(res, e, 'MIDRF-342') });
                                         } else if (typeOverrideProps[1] == '0' && typeOverrideProps[0] == 'image') {
-                                            console.log('ref')
                                             defaultMessageSave(msgObj, data, res, MSUID);
                                         }
                                     }
