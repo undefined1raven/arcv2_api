@@ -111,7 +111,7 @@ function messageQueryHandler(res, resx, MSUIDArr, MSUID, PKSH, SPKSH, data, sele
     let imgChunksPromiseArray = [];
     for (let ix = 0; ix < resx.length; ix++) {
         if (resx[ix].typeOverride == 'image.0') {
-            imgChunksPromiseArray.push(queryDB(`SELECT ${selectColumnsArr} FROM ImageData WHERE MID='${resx[ix].MID}'`));
+            //imgChunksPromiseArray.push(queryDB(`SELECT ${selectColumnsArr} FROM ImageData WHERE MID='${resx[ix].MID}'`));
             typedMsgArr.push({ ...resx[ix], type: `${resx[ix].targetUID == data.said ? 'rx' : 'tx'}` });
         } else if (resx[ix].typeOverride == 'none' || resx[ix].typeOverride == null || resx[ix].typeOverride == undefined) {
             typedMsgArr.push({ ...resx[ix], type: `${resx[ix].targetUID == data.said ? 'rx' : 'tx'}` });
@@ -394,6 +394,12 @@ function handler(req, res) {
                                     })//.catch(e => sendErrorResponse(res, e, 'GMC-105'));;
                                 }).catch(e => sendErrorResponse(res, e, 'GMC-155'));
                             }
+                        }
+                        if (req.query['getImageData'] != undefined) {
+                            let selectColumnsArr = 'liked, tx, seen, auth, ownContent, remoteContent, MID, targetUID, signature, typeOverride';
+                            queryDB(`SELECT ${selectColumnsArr} FROM ImageData WHERE MID='${req.body.MID}'`).then(imageChunks => {
+                                res.json({ status: 'Success', imageChunks: imageChunks });
+                            }).catch(e => sendErrorResponse(res, e, 'IMGCFF-400'))
                         }
                         if (req.query['getMessages'] != undefined) {
                             queryDB(`SELECT MSUID, PKSH, SPKSH, lastTX FROM refs WHERE ownUID='${data.said}' AND foreignUID='${req.body.targetUID}'`).then(MSUIDArr => {
