@@ -412,14 +412,14 @@ function handler(req, res) {
                                     if (req.body.offset) {
                                         const offset = count - req.body.offset;
                                         if (offset >= 0) {
-                                            queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') AND (typeOverride='null' OR typeOverride='none' OR typeOverride='image.0') LIMIT ${offset}, ${60}`).then(resx => {//ORDER BY tx ASC
+                                            queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') AND (typeOverride='null' OR typeOverride='none' OR typeOverride='image.0') ORDER BY tx ASC LIMIT ${offset}, ${60}`).then(resx => {//
                                                 messageQueryHandler(res, resx, MSUIDArr, MSUID, PKSH, SPKSH, data, selectColumnsArr, { prepend: true });
                                             }).catch(e => sendErrorResponse(res, e, 'MF-915'));;
                                         } else {
                                             let countunderflow = offset * -1;
                                             let fetchCount = count % 30;//if more messages are requested than the db has, return the first chunk of messages since conversation start has been reached 
                                             if (countunderflow <= 30) {
-                                                queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') AND (typeOverride='null' OR typeOverride='none' OR typeOverride='image.0') LIMIT ${0}, ${fetchCount}`).then(resx => {//ORDER BY tx ASC
+                                                queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') AND (typeOverride='null' OR typeOverride='none' OR typeOverride='image.0') ORDER BY tx ASC LIMIT ${0}, ${fetchCount}`).then(resx => {//
                                                     messageQueryHandler(res, resx, MSUIDArr, MSUID, PKSH, SPKSH, data, selectColumnsArr);
                                                 }).catch(e => sendErrorResponse(res, e, 'MF-182'));;
                                             } else {
@@ -427,7 +427,7 @@ function handler(req, res) {
                                             }
                                         }
                                     } else {
-                                        queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') AND (typeOverride='null' OR typeOverride='none' OR typeOverride='image.0') LIMIT ${60}`).then(resx => {//ORDER BY tx DESC
+                                        queryDB(`SELECT ${selectColumnsArr} FROM ${MSUID} WHERE (targetUID='${data.said}' AND originUID='${req.body.targetUID}') OR (targetUID='${req.body.targetUID}' AND originUID='${data.said}') AND (typeOverride='null' OR typeOverride='none' OR typeOverride='image.0') ORDER BY tx DESC LIMIT ${60}`).then(resx => {//
                                             messageQueryHandler(res, resx, MSUIDArr, MSUID, PKSH, SPKSH, data, selectColumnsArr);
                                         }).catch(e => sendErrorResponse(res, e, 'MF-442'));
                                     }
